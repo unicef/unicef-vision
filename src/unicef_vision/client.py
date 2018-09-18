@@ -20,7 +20,7 @@ class VisionAPIClient(object):
     """
     """
 
-    def __init__(self, username=None, password=None,  base_url=settings.VISION_URL):
+    def __init__(self, username=None, password=None, base_url=settings.VISION_URL):
         self.base_url = base_url
         if username and password:
             self.auth = HTTPDigestAuth(username, password)

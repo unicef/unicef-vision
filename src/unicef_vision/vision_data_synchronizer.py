@@ -5,7 +5,6 @@ from abc import ABCMeta, abstractmethod
 import requests
 from celery.utils.log import get_task_logger
 from django.conf import settings
-from django.db import connection
 from django.utils.encoding import force_text
 
 from .exceptions import VisionException
@@ -72,7 +71,6 @@ class DataSynchronizer(object):
     GLOBAL_CALL = False
     LOADER_CLASS = None
     LOADER_EXTRA_KWARGS = []
-    country = None
 
     @abstractmethod
     def _convert_records(self, records):
@@ -101,7 +99,6 @@ class DataSynchronizer(object):
         :return:
         """
         log = VisionSyncLog(
-            country=self.country,
             handler_name=self.__class__.__name__
         )
 
@@ -145,22 +142,14 @@ class VisionDataSynchronizer(DataSynchronizer):
     ENDPOINT = None
     LOADER_CLASS = VisionDataLoader
 
-    def __init__(self, country=None, *args, **kwargs):
-        if not country:
-            raise VisionException('Country is required')
+    def __init__(self, *args, **kwargs):
         if self.ENDPOINT is None:
             raise VisionException('You must set the ENDPOINT name')
 
         logger.info('Synchronizer is {}'.format(self.__class__.__name__))
 
-        self.country = country
-
-        connection.set_tenant(country)
-        logger.info('Country is {}'.format(country.name))
-
     def _get_kwargs(self):
         return {
-            'country': self.country,
             'endpoint': self.ENDPOINT,
         }
 
@@ -171,19 +160,14 @@ class FileDataSynchronizer(DataSynchronizer):
     LOADER_CLASS = FileDataLoader
     LOADER_EXTRA_KWARGS = ['filename', ]
 
-    def __init__(self, country=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
 
         filename = kwargs.get('filename', None)
-        if not country:
-            raise VisionException('Country is required')
         if not filename:
             raise VisionException('You need provide the path to the file')
 
         logger.info('Synchronizer is {}'.format(self.__class__.__name__))
 
         self.filename = filename
-        self.country = country
-        connection.set_tenant(country)
-        logger.info('Country is {}'.format(country.name))
 
-        super(FileDataSynchronizer, self).__init__(country, *args, **kwargs)
+        super(FileDataSynchronizer, self).__init__(*args, **kwargs)

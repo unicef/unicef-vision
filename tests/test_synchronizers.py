@@ -137,18 +137,13 @@ class TestVisionDataSynchronizerInit(TestCase):
 
         self.assertEqual('You must set the ENDPOINT name', str(context_manager.exception))
 
-    @mock.patch('unicef_vision.vision_data_synchronizer.connection', spec=['set_tenant'])
     @mock.patch('unicef_vision.vision_data_synchronizer.logger.info')
-    def test_instantiation_positive(self, mock_logger_info, mock_connection):
+    def test_instantiation_positive(self, mock_logger_info):
         """Exercise successfully creating a synchronizer"""
         _MySynchronizer()
 
-        # Ensure tenant is set
-        self.assertEqual(mock_connection.set_tenant.call_count, 1)
-        self.assertEqual(mock_connection.set_tenant.call_args[0], {})
-
         # Ensure msgs are logged
-        self.assertEqual(mock_logger_info.call_count, 2)
+        self.assertEqual(mock_logger_info.call_count, 1)
         expected_msg = 'Synchronizer is _MySynchronizer'
         self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg, ))
         self.assertEqual(mock_logger_info.call_args_list[0][1], {})
@@ -168,7 +163,6 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         sync_log = sync_logs[0]
 
-        self.assertEqual(sync_log.country.pk, self.test_country.pk)
         self.assertEqual(sync_log.handler_name, '_MySynchronizer')
         self.assertEqual(sync_log.total_records, total_records)
         self.assertEqual(sync_log.total_processed, total_processed)
@@ -189,7 +183,7 @@ class TestVisionDataSynchronizerSync(TestCase):
     def setUp(self):
         self.assertEqual(VisionSyncLog.objects.all().count(), 0)
 
-    @mock.patch('.unicef_vision.vision_data_synchronizer.logger.info')
+    @mock.patch('unicef_vision.vision_data_synchronizer.logger.info')
     def test_sync_positive(self, mock_logger_info):
         """Test calling sync() for the mainstream case of success. Tests the following --
             - A VisionSyncLog instance is created and has the expected values
@@ -199,7 +193,7 @@ class TestVisionDataSynchronizerSync(TestCase):
             - logger.info() is called as expected
             - All calls to synchronizer methods have expected args
         """
-        synchronizer = _MySynchronizer(country=self.test_country)
+        synchronizer = _MySynchronizer()
 
         # These are the dummy records that vision will "return" via mock_loader.get()
         vision_records = [42, 43, 44]
@@ -227,8 +221,7 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         self.assertEqual(MockLoaderClass.call_count, 1)
         self.assertEqual(MockLoaderClass.call_args[0], tuple())
-        self.assertEqual(MockLoaderClass.call_args[1], {'country': self.test_country,
-                                                        'endpoint': 'GetSomeStuff_JSON'})
+        self.assertEqual(MockLoaderClass.call_args[1], {'endpoint': 'GetSomeStuff_JSON'})
 
         self.assertEqual(mock_loader.get.call_count, 1)
         self.assertEqual(mock_loader.get.call_args[0], tuple())
@@ -244,13 +237,13 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         # The first two calls to logger.info()  are part of the instantiation of VisionDataLoader so I don't need to
         # test them here.
-        self.assertEqual(mock_logger_info.call_count, 4)
+        self.assertEqual(mock_logger_info.call_count, 3)
         expected_msg = '{} records returned from get'.format(len(vision_records))
+        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[1][1], {})
+        expected_msg = '{} records returned from conversion'.format(len(converted_records))
         self.assertEqual(mock_logger_info.call_args_list[2][0], (expected_msg, ))
         self.assertEqual(mock_logger_info.call_args_list[2][1], {})
-        expected_msg = '{} records returned from conversion'.format(len(converted_records))
-        self.assertEqual(mock_logger_info.call_args_list[3][0], (expected_msg, ))
-        self.assertEqual(mock_logger_info.call_args_list[3][1], {})
 
         self._assertVisionSyncLogFundamentals(len(converted_records), 99)
 
@@ -258,7 +251,7 @@ class TestVisionDataSynchronizerSync(TestCase):
         """Test calling sync() when _save_records() returns a dict. Tests that sync() provides default values
         as necessary and that values in the dict returned by _save_records() are logged.
         """
-        synchronizer = _MySynchronizer(country=self.test_country)
+        synchronizer = _MySynchronizer()
 
         # These are the dummy records that vision will "return" via mock_loader.get()
         records = [42, 43, 44]
@@ -312,7 +305,7 @@ class TestVisionDataSynchronizerSync(TestCase):
             def _save_records(self, records):
                 return 0
 
-        synchronizer = _MyFancySynchronizer(country=self.test_country)
+        synchronizer = _MyFancySynchronizer()
 
         mock_loader = mock.Mock()
         mock_loader.get.return_value = [42, 43, 44]
@@ -325,15 +318,14 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         self.assertEqual(MockLoaderClass.call_count, 1)
         self.assertEqual(MockLoaderClass.call_args[0], tuple())
-        self.assertEqual(MockLoaderClass.call_args[1], {'country': self.test_country,
-                                                        'endpoint': 'GetSomeStuff_JSON',
+        self.assertEqual(MockLoaderClass.call_args[1], {'endpoint': 'GetSomeStuff_JSON',
                                                         'FROBNICATE': True,
                                                         'POTRZEBIE': 2.2})
 
-    @mock.patch('.unicef_vision.vision_data_synchronizer.logger.info')
+    @mock.patch('unicef_vision.vision_data_synchronizer.logger.info')
     def test_sync_exception_handling(self, mock_logger_info):
         """Test sync() exception handling behavior."""
-        synchronizer = _MySynchronizer(country=self.test_country)
+        synchronizer = _MySynchronizer()
 
         # Force a failure in the attempt to get vision records
         def loader_get_side_effect():
@@ -360,10 +352,10 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         # The first two calls to logger.info()  are part of the instantiation of VisionDataLoader so I don't need to
         # test them here.
-        self.assertEqual(mock_logger_info.call_count, 3)
+        self.assertEqual(mock_logger_info.call_count, 2)
         expected_msg = 'sync'
-        self.assertEqual(mock_logger_info.call_args_list[2][0], (expected_msg, ))
-        self.assertEqual(mock_logger_info.call_args_list[2][1], {'exc_info': True})
+        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[1][1], {'exc_info': True})
 
         self._assertVisionSyncLogFundamentals(0, 0, exception_message='Wrong!', successful=False)
 
