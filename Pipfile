@@ -15,6 +15,7 @@ pytest = "*"
 pytest-cov = "*"
 pytest-django = "*"
 pytest-pythonpath = "*"
+responses = "*"
 
 [requires]
 python_version = "3.6"

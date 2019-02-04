@@ -1,7 +1,10 @@
+import sys
 
+import responses
 from django.test import SimpleTestCase
 
 from unicef_vision import client
+from unicef_vision.client import main
 
 
 class TestVisionClient(SimpleTestCase):
@@ -26,3 +29,27 @@ class TestVisionClient(SimpleTestCase):
     def test_build_path(self):
         path = self.client.build_path("api")
         self.assertEqual(path, "{}/api".format(self.client.base_url))
+
+    @responses.activate
+    def test_make_request(self):
+        c = client.VisionAPIClient(username="test", password="123")
+        path = ''
+        responses.add(
+            responses.GET, 'https://api.example.com', status=200,
+            json={},
+        )
+        c.make_request(path)
+
+    @responses.activate
+    def test_call_command(self):
+        c = client.VisionAPIClient(username="test", password="123")
+        command_type = ''
+        responses.add(
+            responses.POST, 'https://api.example.com/command', status=200,
+            json={},
+        )
+        c.call_command(command_type)
+
+    def test_main(self):
+        sys.argv[1:] = ['-U', 'username', '-P', 'password']
+        main()

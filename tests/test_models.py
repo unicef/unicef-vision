@@ -1,11 +1,11 @@
 from django.test import SimpleTestCase
 
-from unicef_vision.models import VisionSyncLog
+from unicef_vision.models import VisionLog
 
 
 class TestStrUnicode(SimpleTestCase):
     """Ensure calling str() on model instances returns the right text."""
 
     def test_vision_sync_log(self):
-        instance = VisionSyncLog()
+        instance = VisionLog()
         self.assertTrue(str(instance).startswith(u''))

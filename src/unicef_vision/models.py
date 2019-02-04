@@ -2,8 +2,8 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
 
-class VisionSyncLog(models.Model):
-    """Represents a sync log for Vision SAP sync"""
+class VisionLog(models.Model):
+    """Represents a sync log for Vision SAP"""
 
     handler_name = models.CharField(max_length=50, verbose_name=_('Handler Name'))
     total_records = models.IntegerField(default=0, verbose_name=_('Total Records'))
