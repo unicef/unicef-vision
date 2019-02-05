@@ -37,9 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'demo.sample',
-    'unicef_vision',
+    'unicef_vision.vision',
 ]
 
 MIDDLEWARE = [
@@ -125,4 +124,4 @@ STATIC_URL = '/static/'
 
 MEDIA_ROOT = '/tmp/'
 VISION_URL = 'https://api.example.com'
-
+VISION_LOGGER_MODEL = 'vision.VisionLog'

@@ -2,7 +2,13 @@ import datetime
 import json
 
 import requests
+from django.apps import apps
 from django.conf import settings
+
+
+def get_vision_logger_domain_model():
+    get_model = apps.get_model
+    return get_model(settings.VISION_LOGGER_MODEL)
 
 
 def get_data_from_insight(endpoint, data={}):

@@ -10,26 +10,24 @@ from django.utils.encoding import force_text
 
 from unicef_vision.exceptions import VisionException
 from unicef_vision.loaders import FileDataLoader, ManualDataLoader, VisionDataLoader
-from unicef_vision.models import VisionLog
-from unicef_vision.utils import wcf_json_date_as_datetime
+from unicef_vision.utils import get_vision_logger_domain_model, wcf_json_date_as_datetime
 
 logger = logging.getLogger(__name__)
 
 
-class Empty(object):
+class Empty:
     pass
 
 
-class DataSynchronizer(object):
+class DataSynchronizer:
 
     __metaclass__ = ABCMeta
 
     REQUIRED_KEYS = {}
     GLOBAL_CALL = False
     LOADER_CLASS = None
-    LOGGER_CLASS = VisionLog
     LOADER_EXTRA_KWARGS = []
-    country = None
+    business_area_code = None
 
     @abstractmethod
     def _convert_records(self, records):
@@ -56,17 +54,19 @@ class DataSynchronizer(object):
         """hook to execute custom code before loading"""
         pass
 
-    def set_logger(self):
-        self.log = self.LOGGER_CLASS(
-            handler_name=self.__class__.__name__
-        )
+    def logger_parameters(self):
+        return {
+            'handler_name': self.__class__.__name__,
+            'business_area_code': self.business_area_code
+        }
+
 
     def sync(self):
         """
         Performs the database sync
         :return:
         """
-        self.set_logger()
+        self.log = get_vision_logger_domain_model()(**self.logger_parameters())
 
         loader_kwargs = self._get_kwargs()
         loader_kwargs.update({
@@ -107,21 +107,21 @@ class VisionDataSynchronizer(DataSynchronizer):
     ENDPOINT = None
     LOADER_CLASS = VisionDataLoader
 
-    def __init__(self, country=None):
-        if not country:
-            raise VisionException('Country is required')
+    def __init__(self, business_area_code=None):
+        if not business_area_code:
+            raise VisionException('business_area_code is required')
         if self.ENDPOINT is None:
             raise VisionException('You must set the ENDPOINT name')
 
         logger.info('Synchronizer is {}'.format(self.__class__.__name__))
 
-        self.country = country
+        self.business_area_code = business_area_code
 
-        logger.info('Country is {}'.format(country))
+        logger.info('business_area_code is {}'.format(business_area_code))
 
     def _get_kwargs(self):
         return {
-            'country': self.country,
+            'business_area_code': self.business_area_code,
             'endpoint': self.ENDPOINT,
         }
 
@@ -132,21 +132,21 @@ class FileDataSynchronizer(DataSynchronizer):
     LOADER_CLASS = FileDataLoader
     LOADER_EXTRA_KWARGS = ['filename', ]
 
-    def __init__(self, country=None, *args, **kwargs):
+    def __init__(self, business_area_code=None, *args, **kwargs):
 
         filename = kwargs.get('filename', None)
-        if not country:
-            raise VisionException('Country is required')
+        if not business_area_code:
+            raise VisionException('business_area_code is required')
         if not filename:
             raise VisionException('You need provide the path to the file')
 
         logger.info('Synchronizer is {}'.format(self.__class__.__name__))
 
         self.filename = filename
-        self.country = country
-        logger.info('Country is {}'.format(country))
+        self.business_area_code = business_area_code
+        logger.info('Business_area_code is {}'.format(business_area_code))
 
-        super().__init__(country, *args, **kwargs)
+        super().__init__(business_area_code, *args, **kwargs)
 
 
 class MultiModelDataSynchronizer(VisionDataSynchronizer):
@@ -249,15 +249,15 @@ class ManualVisionSynchronizer(MultiModelDataSynchronizer):
     LOADER_CLASS = ManualDataLoader
     LOADER_EXTRA_KWARGS = ['object_number', ]
 
-    def __init__(self, country=None, object_number=None):
+    def __init__(self, business_area_code=None, object_number=None):
         self.object_number = object_number
 
         if not object_number:
-            super().__init__(country=country)
+            super().__init__(business_area_code=business_area_code)
         else:
             if self.ENDPOINT is None:
                 raise VisionException('You must set the ENDPOINT name')
 
-            self.country = country
+            self.business_area_code = business_area_code
 
-            logger.info('Country is {}'.format(country))
+            logger.info('Business area code is {}'.format(business_area_code))

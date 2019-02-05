@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from unicef_vision.models import VisionLog
+from unicef_vision.vision.models import VisionLog
 
 
 class TestStrUnicode(SimpleTestCase):

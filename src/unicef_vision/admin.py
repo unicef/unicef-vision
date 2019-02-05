@@ -1,9 +1,6 @@
 from django.contrib import admin
 
-from .models import VisionLog
 
-
-@admin.register(VisionLog)
 class VisionLoggerAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):

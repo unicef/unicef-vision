@@ -1,7 +1,7 @@
 # coding=utf-8
-import pytest
-
 from tests import factories
+
+import pytest
 
 
 @pytest.fixture

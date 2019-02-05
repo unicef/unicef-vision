@@ -12,18 +12,19 @@ logger = get_task_logger('vision.synchronize')
 VISION_NO_DATA_MESSAGE = 'No Data Available'
 
 
-class VisionDataLoader(object):
+class VisionDataLoader:
+    """Base class for Data Loading"""
     URL = settings.VISION_URL
 
-    def __init__(self, country=None, endpoint=None):
+    def __init__(self, business_area_code=None, endpoint=None):
         if endpoint is None:
             raise VisionException('You must set the ENDPOINT name')
 
         separator = '' if self.URL.endswith('/') else '/'
 
         self.url = '{}{}{}'.format(self.URL, separator, endpoint)
-        if country:
-            self.url += '/{}'.format(country)
+        if business_area_code:
+            self.url += '/{}'.format(business_area_code)
 
         logger.info('About to get data from {}'.format(self.url))
 
@@ -47,14 +48,14 @@ class VisionDataLoader(object):
 class ManualDataLoader(VisionDataLoader):
     """
     Can be used to sync single objects from VISION url templates:
-    /endpoint if no country or object_number
-    /endpoint/country if no object number provided
+    /endpoint if no business_area_code or object_number
+    /endpoint/business_area_code if no object number provided
     /endpoint/object_number else
     """
 
-    def __init__(self, country=None, endpoint=None, object_number=None):
+    def __init__(self, business_area_code=None, endpoint=None, object_number=None):
         if not object_number:
-            super().__init__(country=country, endpoint=endpoint)
+            super().__init__(business_area_code=business_area_code, endpoint=endpoint)
         else:
             if endpoint is None:
                 raise VisionException('You must set the ENDPOINT name')
@@ -65,7 +66,8 @@ class ManualDataLoader(VisionDataLoader):
             )
 
 
-class FileDataLoader(object):
+class FileDataLoader:
+    """Loader to read json file instead of REST API"""
 
     def __init__(self, filename):
         self.filename = filename

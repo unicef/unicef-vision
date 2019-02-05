@@ -11,7 +11,7 @@ from requests.auth import HTTPDigestAuth
 logger = logging.getLogger(__name__)
 
 
-class VisionAPIClient(object):
+class VisionAPIClient:
     """Client to Synchronize with Vision"""
 
     def __init__(self, username=None, password=None, base_url=settings.VISION_URL):
@@ -63,9 +63,7 @@ class VisionAPIClient(object):
 
 
 def main():
-    """
-    Main method for command line usage
-    """
+    """Main method for command line usage"""
     parser = argparse.ArgumentParser(description='VISION API Python Client')
 
     parser.add_argument('-U', '--username',
