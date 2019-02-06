@@ -60,7 +60,6 @@ class DataSynchronizer:
             'business_area_code': self.business_area_code
         }
 
-
     def sync(self):
         """
         Performs the database sync
