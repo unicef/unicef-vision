@@ -1,12 +1,12 @@
 import json
+import logging
 
 import requests
-from celery.utils.log import get_task_logger
 from django.conf import settings
 
 from unicef_vision.exceptions import VisionException
 
-logger = get_task_logger('vision.synchronize')
+logger = logging.getLogger(__name__)
 
 # VISION_NO_DATA_MESSAGE is what the remote vision system returns when it has no data
 VISION_NO_DATA_MESSAGE = 'No Data Available'

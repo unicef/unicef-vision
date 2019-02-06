@@ -6,7 +6,7 @@ class AbstractVisionLog(models.Model):
     """Represents a sync log for Vision SAP"""
 
     handler_name = models.CharField(max_length=50, verbose_name=_('Handler Name'))
-    business_area_code = models.CharField(max_length=10, verbose_name=_('Business Area Code'))
+    business_area_code = models.CharField(max_length=10, verbose_name=_('Business Area Code'), null=True, blank=True)
     total_records = models.IntegerField(default=0, verbose_name=_('Total Records'))
     total_processed = models.IntegerField(default=0, verbose_name=_('Total Processed'))
     successful = models.BooleanField(default=False, verbose_name=_('Successful'))
