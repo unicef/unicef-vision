@@ -79,5 +79,5 @@ def main():
     VisionAPIClient(username=args.username, password=args.password)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()

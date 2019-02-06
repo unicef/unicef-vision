@@ -1,10 +1,12 @@
 import mock
+import json
+import os
 from django.conf import settings
 from django.test import override_settings, TestCase
 from django.utils.timezone import now as django_now
 
 from unicef_vision.exceptions import VisionException
-from unicef_vision.loaders import VISION_NO_DATA_MESSAGE, VisionDataLoader
+from unicef_vision.loaders import VISION_NO_DATA_MESSAGE, VisionDataLoader, FileDataLoader
 from unicef_vision.synchronizers import ManualDataLoader, VisionDataSynchronizer
 from unicef_vision.vision.models import VisionLog
 
@@ -397,3 +399,21 @@ class TestManualDataLoader(TestCase):
     def test_init(self):
         a = ManualDataLoader(endpoint="api", object_number="123")
         self.assertEqual(a.url, "{}/api/123".format(settings.VISION_URL))
+
+
+class TestFileDataLoader(TestCase):
+    def setUp(self):
+        self.test_file_content = 'abcd'
+        self.filename = 'tests/test.json'
+        with open(self.filename, 'w') as f:
+            json.dump(self.test_file_content, f)
+
+        self.addCleanup(os.remove, self.filename)
+
+    def test_init(self):
+        fl = FileDataLoader(self.filename)
+        self.assertEqual(fl.filename, self.filename)
+
+    def test_get(self):
+        fl = FileDataLoader(self.filename)
+        self.assertEqual(fl.get(), self.test_file_content)
