@@ -6,8 +6,12 @@ from django.test import override_settings, TestCase
 from django.utils.timezone import now as django_now
 
 from unicef_vision.exceptions import VisionException
-from unicef_vision.loaders import VISION_NO_DATA_MESSAGE, VisionDataLoader, FileDataLoader
-from unicef_vision.synchronizers import ManualDataLoader, VisionDataSynchronizer
+from unicef_vision.synchronizers import (
+    VisionDataSynchronizer,
+    FileDataSynchronizer,
+    MultiModelDataSynchronizer,
+    ManualVisionSynchronizer
+)
 from unicef_vision.vision.models import VisionLog
 
 FAUX_VISION_URL = 'https://api.example.com/foo.svc/'
@@ -15,130 +19,36 @@ FAUX_VISION_USER = 'jane_user'
 FAUX_VISION_PASSWORD = 'password123'
 
 
-class _MySynchronizer(VisionDataSynchronizer):
-    """Bare bones synchronizer class. Exists because VisionDataSynchronizer is abstract; this is concrete but
-    """
-    ENDPOINT = 'GetSomeStuff_JSON'
+def get_synchronizer(sync_class):
+    class _MySynchronizer(sync_class):
+        """Bare bones synchronizer class. Exists because VisionDataSynchronizer is abstract; this is concrete but
+        """
+        ENDPOINT = 'GetSomeStuff_JSON'
 
-    def _convert_records(self, records):
-        pass
+        def _convert_records(self, records):
+            pass
 
-    def _save_records(self, records):
-        pass
+        def _save_records(self, records):
+            pass
 
-
-class TestVisionDataLoader(TestCase):
-    """Exercise VisionDataLoader class"""
-    # Note - I don't understand why, but @override_settings(VISION_URL=FAUX_VISION_URL) doesn't work when I apply
-    # it at the TestCase class level instead of each individual test case.
-
-    def _assertGetFundamentals(self, url, mock_requests, mock_get_response):
-        """Assert common things about the call to loader.get()"""
-        # Ensure requests.get() was called as expected
-        self.assertEqual(mock_requests.get.call_count, 1)
-        self.assertEqual(mock_requests.get.call_args[0], (url, ))
-        self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json'},
-                                                          'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
-                                                          'verify': False})
-        # Ensure response.json() was called as expected
-        self.assertEqual(mock_get_response.json.call_count, 1)
-        self.assertEqual(mock_get_response.json.call_args[0], tuple())
-        self.assertEqual(mock_get_response.json.call_args[1], {})
-
-    def test_instantiation_no_business_area_code(self):
-        """Ensure I can create a loader without specifying a business_area_code"""
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
-        self.assertEqual(loader.url, '{}/GetSomeStuff_JSON'.format(loader.URL))
-
-    def test_instantiation_with_business_area_code(self):
-        """Ensure I can create a loader that specifies a business_area_code"""
-        test_business_area_code = 'ABC'
-
-        loader = VisionDataLoader(business_area_code=test_business_area_code, endpoint='GetSomeStuff_JSON')
-        self.assertEqual(loader.url, '{}/GetSomeStuff_JSON/ABC'.format(loader.URL))
-
-    def test_instantiation_url_construction(self):
-        """Ensure loader URL is constructed correctly regardless of whether or not base URL ends with a slash"""
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
-        self.assertEqual(loader.url, '{}/GetSomeStuff_JSON'.format(loader.URL))
-
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
-    @mock.patch('unicef_vision.loaders.requests', spec=['get'])
-    def test_get_success_with_response(self, mock_requests):
-        """Test loader.get() when the response is 200 OK and data is returned"""
-        mock_get_response = mock.Mock(spec=['status_code', 'json'])
-        mock_get_response.status_code = 200
-        mock_get_response.json = mock.Mock(return_value=[42])
-        mock_requests.get = mock.Mock(return_value=mock_get_response)
-
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
-        response = loader.get()
-
-        self._assertGetFundamentals(loader.url, mock_requests, mock_get_response)
-
-        self.assertEqual(response, [42])
-
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
-    @mock.patch('unicef_vision.loaders.requests', spec=['get'])
-    def test_get_success_no_response(self, mock_requests):
-        """Test loader.get() when the response is 200 OK but no data is returned"""
-        mock_get_response = mock.Mock(spec=['status_code', 'json'])
-        mock_get_response.status_code = 200
-        mock_get_response.json = mock.Mock(return_value=VISION_NO_DATA_MESSAGE)
-        mock_requests.get = mock.Mock(return_value=mock_get_response)
-
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
-        response = loader.get()
-
-        self._assertGetFundamentals(loader.url, mock_requests, mock_get_response)
-
-        self.assertEqual(response, [])
-
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
-    @mock.patch('unicef_vision.loaders.requests', spec=['get'])
-    def test_get_failure(self, mock_requests):
-        """Test loader.get() when the response is something other than 200"""
-        # Note that in contrast to the other mock_get_response variables declared in this test case, this one
-        # doesn't have 'json' in the spec. I don't expect the loaderto access response.json during this test, so if
-        # it does this configuration ensures the test will fail.
-        mock_get_response = mock.Mock(spec=['status_code'])
-        mock_get_response.status_code = 401
-        mock_requests.get = mock.Mock(return_value=mock_get_response)
-
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
-        with self.assertRaises(VisionException) as context_manager:
-            loader.get()
-
-        # Assert that the status code is repeated in the message of the raised exception.
-        self.assertIn('401', str(context_manager.exception))
-
-        # Ensure get was called as normal.
-        self.assertEqual(mock_requests.get.call_count, 1)
-        self.assertEqual(mock_requests.get.call_args[0], (loader.url, ))
-        self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json'},
-                                                          'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
-                                                          'verify': False})
-
+    return _MySynchronizer
 
 class TestVisionDataSynchronizerInit(TestCase):
     """Exercise initialization of VisionDataSynchronizer class"""
 
+    def setUp(self):
+        self.synchronizer = get_synchronizer(VisionDataSynchronizer)
+
     def test_instantiation_no_business_area_code(self):
         """Ensure I can't create a synchronizer without specifying a business_area_code"""
         with self.assertRaises(VisionException) as context_manager:
-            _MySynchronizer()
+            self.synchronizer()
 
         self.assertEqual('business_area_code is required', str(context_manager.exception))
 
     def test_instantiation_no_endpoint(self):
         """Ensure I can't create a synchronizer without specifying an endpoint"""
-        class _MyBadSynchronizer(_MySynchronizer):
+        class _MyBadSynchronizer(self.synchronizer):
             """Synchronizer class that doesn't set self.ENDPOINT"""
             ENDPOINT = None
 
@@ -154,7 +64,7 @@ class TestVisionDataSynchronizerInit(TestCase):
         """Exercise successfully creating a synchronizer"""
         test_business_area_code = 'ABC'
 
-        _MySynchronizer(business_area_code=test_business_area_code)
+        self.synchronizer(business_area_code=test_business_area_code)
 
         # Ensure msgs are logged
         self.assertEqual(mock_logger_info.call_count, 2)
@@ -201,6 +111,7 @@ class TestVisionDataSynchronizerSync(TestCase):
     def setUp(self):
         self.assertEqual(VisionLog.objects.all().count(), 0)
         self.test_business_area_code = 'ABC'
+        self.synchronizer = get_synchronizer(VisionDataSynchronizer)
 
     @mock.patch('unicef_vision.synchronizers.logger.info')
     def test_sync_positive(self, mock_logger_info):
@@ -212,7 +123,7 @@ class TestVisionDataSynchronizerSync(TestCase):
             - logger.info() is called as expected
             - All calls to synchronizer methods have expected args
         """
-        synchronizer = _MySynchronizer(business_area_code=self.test_business_area_code)
+        synchronizer = self.synchronizer(business_area_code=self.test_business_area_code)
 
         # These are the dummy records that vision will "return" via mock_loader.get()
         vision_records = [42, 43, 44]
@@ -271,7 +182,7 @@ class TestVisionDataSynchronizerSync(TestCase):
         """Test calling sync() when _save_records() returns a dict. Tests that sync() provides default values
         as necessary and that values in the dict returned by _save_records() are logged.
         """
-        synchronizer = _MySynchronizer(business_area_code=self.test_business_area_code)
+        synchronizer = self.synchronizer(business_area_code=self.test_business_area_code)
 
         # These are the dummy records that vision will "return" via mock_loader.get()
         records = [42, 43, 44]
@@ -313,7 +224,7 @@ class TestVisionDataSynchronizerSync(TestCase):
 
     def test_sync_passes_loader_kwargs(self):
         """Test that LOADER_EXTRA_KWARGS on the synchronizer are passed to the loader."""
-        class _MyFancySynchronizer(_MySynchronizer):
+        class _MyFancySynchronizer(self.synchronizer):
             """Synchronizer class that uses LOADER_EXTRA_KWARGS"""
             LOADER_EXTRA_KWARGS = ['FROBNICATE', 'POTRZEBIE']
             FROBNICATE = True
@@ -346,7 +257,7 @@ class TestVisionDataSynchronizerSync(TestCase):
     @mock.patch('unicef_vision.synchronizers.logger.info')
     def test_sync_exception_handling(self, mock_logger_info):
         """Test sync() exception handling behavior."""
-        synchronizer = _MySynchronizer(business_area_code=self.test_business_area_code)
+        synchronizer = self.synchronizer(business_area_code=self.test_business_area_code)
 
         # Force a failure in the attempt to get vision records
         def loader_get_side_effect():
@@ -381,39 +292,105 @@ class TestVisionDataSynchronizerSync(TestCase):
         self._assertVisionLogFundamentals(0, 0, exception_message='Wrong!', successful=False)
 
 
-class TestManualDataLoader(TestCase):
-    def test_init_no_endpoint_no_object_number(self):
-        with self.assertRaisesRegex(
-                VisionException,
-                "You must set the ENDPOINT"
-        ):
-            ManualDataLoader()
 
-    def test_init_no_endpoint(self):
-        with self.assertRaisesRegex(
-                VisionException,
-                "You must set the ENDPOINT"
-        ):
-            ManualDataLoader(object_number="123")
+class TestFileDataSynchronizer(TestCase):
+    """
+    Exercise initialization of FileDataSynchronizer class
+    TODO: test sync maybe
+    """
 
-    def test_init(self):
-        a = ManualDataLoader(endpoint="api", object_number="123")
-        self.assertEqual(a.url, "{}/api/123".format(settings.VISION_URL))
-
-
-class TestFileDataLoader(TestCase):
     def setUp(self):
-        self.test_file_content = 'abcd'
-        self.filename = 'tests/test.json'
-        with open(self.filename, 'w') as f:
-            json.dump(self.test_file_content, f)
+        self.synchronizer = get_synchronizer(FileDataSynchronizer)
 
-        self.addCleanup(os.remove, self.filename)
+    def test_instantiation_no_business_area_code(self):
+        """Ensure I can't create a synchronizer without specifying a business_area_code"""
+        with self.assertRaises(VisionException) as context_manager:
+            self.synchronizer()
 
-    def test_init(self):
-        fl = FileDataLoader(self.filename)
-        self.assertEqual(fl.filename, self.filename)
+        self.assertEqual('business_area_code is required', str(context_manager.exception))
 
-    def test_get(self):
-        fl = FileDataLoader(self.filename)
-        self.assertEqual(fl.get(), self.test_file_content)
+    def test_instantiation_no_filename(self):
+        """Ensure I can't create a synchronizer without specifying a filename"""
+        test_business_area_code = 'ABC'
+
+        with self.assertRaises(VisionException) as context_manager:
+            self.synchronizer(business_area_code=test_business_area_code, filename=None)
+
+        self.assertEqual('You need provide the path to the file', str(context_manager.exception))
+
+    @mock.patch('unicef_vision.synchronizers.logger.info')
+    def test_instantiation_positive(self, mock_logger_info):
+        """Exercise successfully creating a synchronizer"""
+        test_business_area_code = 'ABC'
+        test_filename = 'tests/test.json'
+
+        self.synchronizer(business_area_code=test_business_area_code, filename=test_filename)
+
+        # Ensure msgs are logged
+        self.assertEqual(mock_logger_info.call_count, 2)
+        expected_msg = 'Synchronizer is _MySynchronizer'
+        self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[0][1], {})
+
+        expected_msg = 'business_area_code is ' + test_business_area_code
+        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[1][1], {})
+
+
+class TestMultiModelDataSynchronizer(TestCase):
+
+    def setUp(self):
+        self.synchronizer = get_synchronizer(MultiModelDataSynchronizer)
+
+    def test_convert_records(self):
+        pass
+
+    def test_get_field_value(self):
+        pass
+
+    def test_process_record(self):
+        pass
+
+    def test_save_records(self):
+        pass
+
+    def test_filter_records(self):
+        pass
+
+
+class TestManualVisionSynchronizer(TestCase):
+    """Exercise initialization of ManualVisionSynchronizer class"""
+
+    def setUp(self):
+        self.synchronizer = get_synchronizer(ManualVisionSynchronizer)
+
+    def test_instantiation_no_business_area_code(self):
+        """Ensure I can't create a synchronizer without specifying a business_area_code"""
+        with self.assertRaises(VisionException) as context_manager:
+            self.synchronizer()
+
+        self.assertEqual('business_area_code is required', str(context_manager.exception))
+
+    def test_instantiation_object_number_no_endpoint(self):
+        test_business_area_code = 'ABC'
+        test_object_number = 1
+
+        class _MyBadSynchronizer(self.synchronizer):
+            """Synchronizer class that doesn't set self.ENDPOINT"""
+            ENDPOINT = None
+
+        with self.assertRaises(VisionException) as context_manager:
+            _MyBadSynchronizer(business_area_code=test_business_area_code, object_number=test_object_number)
+
+        self.assertEqual('You must set the ENDPOINT name', str(context_manager.exception))
+
+    @mock.patch('unicef_vision.synchronizers.logger.info')
+    def test_instantiation_positive_with_object_number(self, mock_logger_info):
+        """Exercise successfully creating a synchronizer"""
+        test_business_area_code = 'ABC'
+        test_object_number = 1
+
+        self.synchronizer(business_area_code=test_business_area_code, object_number=test_object_number)
+
+        # Ensure correct initialisation by checking logs
+        self.assertEqual(mock_logger_info.call_count, 1)

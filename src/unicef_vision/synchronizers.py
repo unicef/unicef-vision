@@ -143,9 +143,7 @@ class FileDataSynchronizer(DataSynchronizer):
 
         self.filename = filename
         self.business_area_code = business_area_code
-        logger.info('Business_area_code is {}'.format(business_area_code))
-
-        super().__init__(business_area_code, *args, **kwargs)
+        logger.info('business_area_code is {}'.format(business_area_code))
 
 
 class MultiModelDataSynchronizer(VisionDataSynchronizer):
