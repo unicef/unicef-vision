@@ -1,6 +1,9 @@
+import time
 import mock
 import json
 import os
+
+from collections import OrderedDict
 from django.conf import settings
 from django.test import override_settings, TestCase
 from django.utils.timezone import now as django_now
@@ -19,36 +22,34 @@ FAUX_VISION_USER = 'jane_user'
 FAUX_VISION_PASSWORD = 'password123'
 
 
-def get_synchronizer(sync_class):
-    class _MySynchronizer(sync_class):
-        """Bare bones synchronizer class. Exists because VisionDataSynchronizer is abstract; this is concrete but
-        """
-        ENDPOINT = 'GetSomeStuff_JSON'
+class _MySynchronizer(VisionDataSynchronizer):
+    """Bare bones synchronizer class. Exists because VisionDataSynchronizer is abstract; this is concrete but
+    """
+    ENDPOINT = 'GetSomeStuff_JSON'
 
-        def _convert_records(self, records):
-            pass
+    def _convert_records(self, records):
+        pass
 
-        def _save_records(self, records):
-            pass
+    def _save_records(self, records):
+        pass
 
-    return _MySynchronizer
 
 class TestVisionDataSynchronizerInit(TestCase):
     """Exercise initialization of VisionDataSynchronizer class"""
 
     def setUp(self):
-        self.synchronizer = get_synchronizer(VisionDataSynchronizer)
+        self.synchronizer_class = _MySynchronizer
 
     def test_instantiation_no_business_area_code(self):
         """Ensure I can't create a synchronizer without specifying a business_area_code"""
         with self.assertRaises(VisionException) as context_manager:
-            self.synchronizer()
+            self.synchronizer_class()
 
         self.assertEqual('business_area_code is required', str(context_manager.exception))
 
     def test_instantiation_no_endpoint(self):
         """Ensure I can't create a synchronizer without specifying an endpoint"""
-        class _MyBadSynchronizer(self.synchronizer):
+        class _MyBadSynchronizer(self.synchronizer_class):
             """Synchronizer class that doesn't set self.ENDPOINT"""
             ENDPOINT = None
 
@@ -64,7 +65,7 @@ class TestVisionDataSynchronizerInit(TestCase):
         """Exercise successfully creating a synchronizer"""
         test_business_area_code = 'ABC'
 
-        self.synchronizer(business_area_code=test_business_area_code)
+        self.synchronizer_class(business_area_code=test_business_area_code)
 
         # Ensure msgs are logged
         self.assertEqual(mock_logger_info.call_count, 2)
@@ -111,7 +112,7 @@ class TestVisionDataSynchronizerSync(TestCase):
     def setUp(self):
         self.assertEqual(VisionLog.objects.all().count(), 0)
         self.test_business_area_code = 'ABC'
-        self.synchronizer = get_synchronizer(VisionDataSynchronizer)
+        self.synchronizer_class = _MySynchronizer
 
     @mock.patch('unicef_vision.synchronizers.logger.info')
     def test_sync_positive(self, mock_logger_info):
@@ -123,7 +124,7 @@ class TestVisionDataSynchronizerSync(TestCase):
             - logger.info() is called as expected
             - All calls to synchronizer methods have expected args
         """
-        synchronizer = self.synchronizer(business_area_code=self.test_business_area_code)
+        synchronizer = self.synchronizer_class(business_area_code=self.test_business_area_code)
 
         # These are the dummy records that vision will "return" via mock_loader.get()
         vision_records = [42, 43, 44]
@@ -182,7 +183,7 @@ class TestVisionDataSynchronizerSync(TestCase):
         """Test calling sync() when _save_records() returns a dict. Tests that sync() provides default values
         as necessary and that values in the dict returned by _save_records() are logged.
         """
-        synchronizer = self.synchronizer(business_area_code=self.test_business_area_code)
+        synchronizer = self.synchronizer_class(business_area_code=self.test_business_area_code)
 
         # These are the dummy records that vision will "return" via mock_loader.get()
         records = [42, 43, 44]
@@ -224,7 +225,7 @@ class TestVisionDataSynchronizerSync(TestCase):
 
     def test_sync_passes_loader_kwargs(self):
         """Test that LOADER_EXTRA_KWARGS on the synchronizer are passed to the loader."""
-        class _MyFancySynchronizer(self.synchronizer):
+        class _MyFancySynchronizer(self.synchronizer_class):
             """Synchronizer class that uses LOADER_EXTRA_KWARGS"""
             LOADER_EXTRA_KWARGS = ['FROBNICATE', 'POTRZEBIE']
             FROBNICATE = True
@@ -257,7 +258,7 @@ class TestVisionDataSynchronizerSync(TestCase):
     @mock.patch('unicef_vision.synchronizers.logger.info')
     def test_sync_exception_handling(self, mock_logger_info):
         """Test sync() exception handling behavior."""
-        synchronizer = self.synchronizer(business_area_code=self.test_business_area_code)
+        synchronizer = self.synchronizer_class(business_area_code=self.test_business_area_code)
 
         # Force a failure in the attempt to get vision records
         def loader_get_side_effect():
@@ -292,7 +293,6 @@ class TestVisionDataSynchronizerSync(TestCase):
         self._assertVisionLogFundamentals(0, 0, exception_message='Wrong!', successful=False)
 
 
-
 class TestFileDataSynchronizer(TestCase):
     """
     Exercise initialization of FileDataSynchronizer class
@@ -300,12 +300,13 @@ class TestFileDataSynchronizer(TestCase):
     """
 
     def setUp(self):
-        self.synchronizer = get_synchronizer(FileDataSynchronizer)
+        self.synchronizer_class = FileDataSynchronizer
+        self.synchronizer_class.ENDPOINT = 'GetSomeStuff_JSON'
 
     def test_instantiation_no_business_area_code(self):
         """Ensure I can't create a synchronizer without specifying a business_area_code"""
         with self.assertRaises(VisionException) as context_manager:
-            self.synchronizer()
+            self.synchronizer_class()
 
         self.assertEqual('business_area_code is required', str(context_manager.exception))
 
@@ -314,7 +315,7 @@ class TestFileDataSynchronizer(TestCase):
         test_business_area_code = 'ABC'
 
         with self.assertRaises(VisionException) as context_manager:
-            self.synchronizer(business_area_code=test_business_area_code, filename=None)
+            self.synchronizer_class(business_area_code=test_business_area_code, filename=None)
 
         self.assertEqual('You need provide the path to the file', str(context_manager.exception))
 
@@ -324,11 +325,11 @@ class TestFileDataSynchronizer(TestCase):
         test_business_area_code = 'ABC'
         test_filename = 'tests/test.json'
 
-        self.synchronizer(business_area_code=test_business_area_code, filename=test_filename)
+        self.synchronizer_class(business_area_code=test_business_area_code, filename=test_filename)
 
         # Ensure msgs are logged
         self.assertEqual(mock_logger_info.call_count, 2)
-        expected_msg = 'Synchronizer is _MySynchronizer'
+        expected_msg = 'Synchronizer is FileDataSynchronizer'
         self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg, ))
         self.assertEqual(mock_logger_info.call_args_list[0][1], {})
 
@@ -340,34 +341,64 @@ class TestFileDataSynchronizer(TestCase):
 class TestMultiModelDataSynchronizer(TestCase):
 
     def setUp(self):
-        self.synchronizer = get_synchronizer(MultiModelDataSynchronizer)
+        test_business_area_code = 'ABC'
+        self.synchronizer_class = MultiModelDataSynchronizer
+        self.synchronizer_class.ENDPOINT = 'GetSomeStuff_JSON'
+
+        self.synchronizer_class.REQUIRED_KEYS = ['']
+
+        self.synchronizer = self.synchronizer_class(business_area_code=test_business_area_code)
 
     def test_convert_records(self):
-        pass
-
-    def test_get_field_value(self):
-        pass
-
-    def test_process_record(self):
-        pass
-
-    def test_save_records(self):
-        pass
-
-    def test_filter_records(self):
-        pass
+        list_records = [1,2,3]
+        self.assertEqual(list_records, self.synchronizer._convert_records(list_records))
+        list_records_str = '[1, 2, 3]'
+        self.assertEqual(list_records, self.synchronizer._convert_records(list_records_str))
+        self.assertListEqual([], self.synchronizer._convert_records('abcde'))
 
 
 class TestManualVisionSynchronizer(TestCase):
     """Exercise initialization of ManualVisionSynchronizer class"""
 
     def setUp(self):
-        self.synchronizer = get_synchronizer(ManualVisionSynchronizer)
+        self.synchronizer_class = ManualVisionSynchronizer
+        self.synchronizer_class.ENDPOINT = 'GetSomeStuff_JSON'
+
+    def _setup_sync(self):
+        self.synchronizer_class.REQUIRED_KEYS = (
+            "VENDOR_CODE",
+            "VENDOR_NAME",
+            "test_date",
+        )
+        self.synchronizer_class.MAPPING = {
+            'partner': {
+                "code": "VENDOR_CODE",
+                "name": "VENDOR_NAME",
+                "test_date": "test_date"
+            },
+        }
+        self.DATE_FIELDS = ['test_date']
+        self.synchronizer_class.MODEL_MAPPING = OrderedDict({
+            'partner': mock.Mock(),
+        })
+
+    def _setup_test_records(self):
+        return [
+            {
+                "VENDOR_CODE": 't1',
+                "VENDOR_NAME": 'n1',
+                "test_date": django_now(),
+            },
+            {
+                'code': 'bad_key',
+                'name': 'bad_key',
+            },
+        ]
 
     def test_instantiation_no_business_area_code(self):
         """Ensure I can't create a synchronizer without specifying a business_area_code"""
         with self.assertRaises(VisionException) as context_manager:
-            self.synchronizer()
+            self.synchronizer_class()
 
         self.assertEqual('business_area_code is required', str(context_manager.exception))
 
@@ -375,7 +406,7 @@ class TestManualVisionSynchronizer(TestCase):
         test_business_area_code = 'ABC'
         test_object_number = 1
 
-        class _MyBadSynchronizer(self.synchronizer):
+        class _MyBadSynchronizer(self.synchronizer_class):
             """Synchronizer class that doesn't set self.ENDPOINT"""
             ENDPOINT = None
 
@@ -390,7 +421,23 @@ class TestManualVisionSynchronizer(TestCase):
         test_business_area_code = 'ABC'
         test_object_number = 1
 
-        self.synchronizer(business_area_code=test_business_area_code, object_number=test_object_number)
+        self.synchronizer_class(business_area_code=test_business_area_code, object_number=test_object_number)
 
         # Ensure correct initialisation by checking logs
         self.assertEqual(mock_logger_info.call_count, 1)
+
+    def test_save_records_wo_object_number(self):
+        self._setup_sync()
+        test_records = self._setup_test_records()
+
+        syncronizer = self.synchronizer_class(business_area_code='ABC')
+        syncronizer._save_records(test_records)
+
+    def test_save_records_w_object_number(self):
+        self._setup_sync()
+        test_records = self._setup_test_records()
+
+        syncronizer = self.synchronizer_class(business_area_code='ABC', object_number=1)
+        syncronizer._save_records(test_records)
+
+
