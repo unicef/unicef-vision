@@ -162,12 +162,19 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
             return []
 
     def _get_field_value(self, field_name, field_json_code, json_item, model):
+        # print('list(self.MODEL_MAPPING.keys())', list(self.MODEL_MAPPING.keys()))
+        # print('field_name, field_json_code, json_item, model', field_name, field_json_code, json_item, model)
+
         if field_json_code in self.DATE_FIELDS:
             # parsing field as date
             return wcf_json_date_as_datetime(json_item[field_json_code])
         elif field_name in self.MODEL_MAPPING.keys():
             # this is related model, so we need to fetch somehow related object.
             related_model = self.MODEL_MAPPING[field_name]
+
+            print('field_name', field_name)
+            print('related_model', related_model)
+            print('related_model type', type(related_model))
 
             if isinstance(related_model, types.FunctionType):
                 # callable provided, object should be returned from it
@@ -197,15 +204,24 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
         ).get(field_name, None)
         if value_handler:
             result = value_handler(result)
+
         return result
 
     def _process_record(self, json_item):
         try:
+            # print('\n------------------------')
+            # print('self.MODEL_MAPPING.items()', self.MODEL_MAPPING.items())
             for model_name, model in self.MODEL_MAPPING.items():
+                # print('\n------------------------')
+                # print('model._meta.code.unique', model._meta.code.unique)
+
                 mapped_item = dict(
                     [(field_name, self._get_field_value(field_name, field_json_code, json_item, model))
                      for field_name, field_json_code in self.MAPPING[model_name].items()]
                 )
+
+                # print('mapped_item', mapped_item)
+
                 kwargs = dict(
                     [(field_name, value) for field_name, value in mapped_item.items()
                      if model._meta.get_field(field_name).unique]

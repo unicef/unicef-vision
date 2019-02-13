@@ -27,7 +27,7 @@ def get_data_from_insight(endpoint, data={}):
         return False, 'Loading data from Vision Failed, status {}'.format(response.status_code)
     try:
         result = json.loads(response.json())
-    except ValueError:  # ValueError - superclass of JSONDecodeError
+    except ValueError:
         return False, 'Loading data from Vision Failed, no valid response returned for data: {}'.format(data)
     return True, result
 

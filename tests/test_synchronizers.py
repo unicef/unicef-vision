@@ -1,8 +1,9 @@
-import time
-import mock
+import copy
 import json
+import mock
 import os
 
+from datetime import datetime
 from collections import OrderedDict
 from django.conf import settings
 from django.test import override_settings, TestCase
@@ -345,8 +346,6 @@ class TestMultiModelDataSynchronizer(TestCase):
         self.synchronizer_class = MultiModelDataSynchronizer
         self.synchronizer_class.ENDPOINT = 'GetSomeStuff_JSON'
 
-        self.synchronizer_class.REQUIRED_KEYS = ['']
-
         self.synchronizer = self.synchronizer_class(business_area_code=test_business_area_code)
 
     def test_convert_records(self):
@@ -368,30 +367,47 @@ class TestManualVisionSynchronizer(TestCase):
         self.synchronizer_class.REQUIRED_KEYS = (
             "VENDOR_CODE",
             "VENDOR_NAME",
-            "test_date",
+            "date",
         )
         self.synchronizer_class.MAPPING = {
             'partner': {
+                "partner": "partner",
                 "code": "VENDOR_CODE",
                 "name": "VENDOR_NAME",
-                "test_date": "test_date"
+                "date": "date"
             },
         }
-        self.DATE_FIELDS = ['test_date']
+        self.synchronizer_class.DATE_FIELDS = ['date']
+        m = mock.Mock()
+        m._meta.code.unique = True
+        m2 = copy.deepcopy(m)
         self.synchronizer_class.MODEL_MAPPING = OrderedDict({
-            'partner': mock.Mock(),
+            'partner': m,
+            'partner2': m2
         })
 
     def _setup_test_records(self):
         return [
             {
-                "VENDOR_CODE": 't1',
-                "VENDOR_NAME": 'n1',
-                "test_date": django_now(),
-            },
-            {
-                'code': 'bad_key',
-                'name': 'bad_key',
+                # "partner": 1,
+                "VENDOR_CODE": "t1",
+                "VENDOR_NAME": "n1",
+                # "date": str(datetime.now().date()),
+                # 'date': '2019-05-04T13:09:11.737Z'
+                "date": "/Date(1375243200000)/"
+            }, {
+                # "partner": lambda p: 1,
+                "VENDOR_CODE": "t2",
+                "VENDOR_NAME": "n2",
+                # "date": str(datetime.now().date()),
+                # 'date': '2019-05-04T13:09:11.737Z'
+                "date": "/Date(1375243200000)/"
+            }, {
+                "code": "bad_key",
+                "name": "bad_key",
+                # "date": str(datetime.now().date()),
+                # 'date': '2019-05-04T13:09:11.737Z'
+                "date": "/Date(1375243200000)/"
             },
         ]
 
@@ -426,6 +442,14 @@ class TestManualVisionSynchronizer(TestCase):
         # Ensure correct initialisation by checking logs
         self.assertEqual(mock_logger_info.call_count, 1)
 
+    def test_save_records(self):
+        self._setup_sync()
+        test_records = self._setup_test_records()
+
+        syncronizer = self.synchronizer_class(business_area_code='ABC')
+        syncronizer._save_records(test_records)
+
+    '''
     def test_save_records_wo_object_number(self):
         self._setup_sync()
         test_records = self._setup_test_records()
@@ -439,5 +463,4 @@ class TestManualVisionSynchronizer(TestCase):
 
         syncronizer = self.synchronizer_class(business_area_code='ABC', object_number=1)
         syncronizer._save_records(test_records)
-
-
+    '''
