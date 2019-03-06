@@ -30,15 +30,15 @@ class DataSynchronizer:
     business_area_code = None
 
     @abstractmethod
-    def _convert_records(self, records):
+    def _convert_records(self, records):    # pragma: no cover
         pass
 
     @abstractmethod
-    def _save_records(self, records):
+    def _save_records(self, records):   # pragma: no cover
         pass
 
     @abstractmethod
-    def _get_kwargs(self):
+    def _get_kwargs(self):  # pragma: no cover
         return {}
 
     def _filter_records(self, records):
@@ -50,7 +50,7 @@ class DataSynchronizer:
 
         return [rec for rec in records if is_valid_record(rec)]
 
-    def preload(self):
+    def preload(self):  # pragma: no cover
         """hook to execute custom code before loading"""
         pass
 
@@ -162,19 +162,12 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
             return []
 
     def _get_field_value(self, field_name, field_json_code, json_item, model):
-        # print('list(self.MODEL_MAPPING.keys())', list(self.MODEL_MAPPING.keys()))
-        # print('field_name, field_json_code, json_item, model', field_name, field_json_code, json_item, model)
-
         if field_json_code in self.DATE_FIELDS:
             # parsing field as date
             return wcf_json_date_as_datetime(json_item[field_json_code])
         elif field_name in self.MODEL_MAPPING.keys():
             # this is related model, so we need to fetch somehow related object.
             related_model = self.MODEL_MAPPING[field_name]
-
-            print('field_name', field_name)
-            print('related_model', related_model)
-            print('related_model type', type(related_model))
 
             if isinstance(related_model, types.FunctionType):
                 # callable provided, object should be returned from it
@@ -209,23 +202,24 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
 
     def _process_record(self, json_item):
         try:
-            # print('\n------------------------')
-            # print('self.MODEL_MAPPING.items()', self.MODEL_MAPPING.items())
             for model_name, model in self.MODEL_MAPPING.items():
-                # print('\n------------------------')
-                # print('model._meta.code.unique', model._meta.code.unique)
-
                 mapped_item = dict(
                     [(field_name, self._get_field_value(field_name, field_json_code, json_item, model))
                      for field_name, field_json_code in self.MAPPING[model_name].items()]
                 )
 
                 # print('mapped_item', mapped_item)
+                # for field_name, value in mapped_item.items():
+                #     print('model._meta.get_field(field_name).unique', model._meta.get_field(field_name).unique)
 
                 kwargs = dict(
                     [(field_name, value) for field_name, value in mapped_item.items()
                      if model._meta.get_field(field_name).unique]
                 )
+
+                # print('\n------------------------')
+                # print('kwargs', kwargs)
+                # print('\n------------------------')
 
                 if not kwargs:
                     for fields in model._meta.unique_together:

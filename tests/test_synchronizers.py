@@ -2,6 +2,7 @@ import copy
 import json
 import mock
 import os
+import types
 
 from datetime import datetime
 from collections import OrderedDict
@@ -371,42 +372,74 @@ class TestManualVisionSynchronizer(TestCase):
         )
         self.synchronizer_class.MAPPING = {
             'partner': {
+                "code": "VENDOR_CODE",
+                "name": "VENDOR_NAME",
+                "desc": "DESCRIPTION",
+                "date": "date",
+                "blocked": "blocked",
+            },
+        }
+        self.synchronizer_class.DATE_FIELDS = ['date']
+        self.synchronizer_class.FIELD_HANDLERS = {
+            'partner': {
+                "blocked": lambda x: True if x else False,
+            }
+        }
+
+        m = mock.Mock(spec=['_meta', 'partner'])
+        m._meta.code = mock.Mock(spec=['unique'])
+        m._meta.code.unique = True
+
+        self.synchronizer_class.MODEL_MAPPING = OrderedDict((
+            ('partner', m),
+        ))
+
+    def _setup_sync_mapping_v2(self):
+        def f_type(): pass
+
+        self._setup_sync()
+
+        self.synchronizer_class.MAPPING = {
+            'partner': {
                 "partner": "partner",
                 "code": "VENDOR_CODE",
                 "name": "VENDOR_NAME",
                 "date": "date"
             },
         }
-        self.synchronizer_class.DATE_FIELDS = ['date']
-        m = mock.Mock()
-        m._meta.code.unique = True
-        m2 = copy.deepcopy(m)
-        self.synchronizer_class.MODEL_MAPPING = OrderedDict({
-            'partner': m,
-            'partner2': m2
-        })
+
+        self.synchronizer_class.MODEL_MAPPING = OrderedDict((
+            ('partner', f_type),
+        ))
+
+    def _setup_sync_mapping_v3(self):
+        self._setup_sync_mapping_v2()
+
+        self.synchronizer_class.MODEL_MAPPING = OrderedDict((
+            ('partner', {
+                "code": "t1",
+                "name": "n1",
+                "date": "/Date(1375243200000)/"
+            }),
+        ))
 
     def _setup_test_records(self):
         return [
             {
-                # "partner": 1,
+                "partner": 1,
                 "VENDOR_CODE": "t1",
                 "VENDOR_NAME": "n1",
-                # "date": str(datetime.now().date()),
-                # 'date': '2019-05-04T13:09:11.737Z'
-                "date": "/Date(1375243200000)/"
+                "DESCRIPTION": "desc",
+                "date": "/Date(1375243200000)/",
             }, {
-                # "partner": lambda p: 1,
+                "partner": 2,
                 "VENDOR_CODE": "t2",
-                "VENDOR_NAME": "n2",
-                # "date": str(datetime.now().date()),
-                # 'date': '2019-05-04T13:09:11.737Z'
-                "date": "/Date(1375243200000)/"
+                "VENDOR_NAME": "",
+                "date": "/Date(1375243200000)/",
+                "blocked": True,
             }, {
                 "code": "bad_key",
                 "name": "bad_key",
-                # "date": str(datetime.now().date()),
-                # 'date': '2019-05-04T13:09:11.737Z'
                 "date": "/Date(1375243200000)/"
             },
         ]
@@ -449,18 +482,16 @@ class TestManualVisionSynchronizer(TestCase):
         syncronizer = self.synchronizer_class(business_area_code='ABC')
         syncronizer._save_records(test_records)
 
-    '''
-    def test_save_records_wo_object_number(self):
-        self._setup_sync()
+    def test_save_records_mapping_v2(self):
+        self._setup_sync_mapping_v2()
         test_records = self._setup_test_records()
 
         syncronizer = self.synchronizer_class(business_area_code='ABC')
         syncronizer._save_records(test_records)
 
-    def test_save_records_w_object_number(self):
-        self._setup_sync()
+    def test_save_records_mapping_v3(self):
+        self._setup_sync_mapping_v3()
         test_records = self._setup_test_records()
 
-        syncronizer = self.synchronizer_class(business_area_code='ABC', object_number=1)
+        syncronizer = self.synchronizer_class(business_area_code='ABC')
         syncronizer._save_records(test_records)
-    '''
