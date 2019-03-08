@@ -385,16 +385,15 @@ class TestManualVisionSynchronizer(TestCase):
                 "blocked": lambda x: True if x else False,
             }
         }
-
-        m = mock.Mock(spec=['_meta', 'partner'])
-        m._meta.code = mock.Mock(spec=['unique'])
-        m._meta.code.unique = True
-
         self.synchronizer_class.MODEL_MAPPING = OrderedDict((
-            ('partner', m),
+            ('partner', mock.Mock()),
         ))
 
+    def _setup_sync_mapping_v1(self):
+        self._setup_sync()
+
     def _setup_sync_mapping_v2(self):
+        """set up partner model as callable types.FunctionType"""
         def f_type(): pass
 
         self._setup_sync()
@@ -404,23 +403,60 @@ class TestManualVisionSynchronizer(TestCase):
                 "partner": "partner",
                 "code": "VENDOR_CODE",
                 "name": "VENDOR_NAME",
-                "date": "date"
+                "date": "date",
             },
         }
-
         self.synchronizer_class.MODEL_MAPPING = OrderedDict((
             ('partner', f_type),
         ))
 
     def _setup_sync_mapping_v3(self):
-        self._setup_sync_mapping_v2()
+        """set up test data as queryable fields of partner model class"""
 
+        self._setup_sync()
+        self.synchronizer_class.MAPPING = {
+            'partner': {
+                "partner": "partner",
+                "code": "VENDOR_CODE",
+                "name": "VENDOR_NAME",
+                "date": "date",
+            },
+        }
         self.synchronizer_class.MODEL_MAPPING = OrderedDict((
             ('partner', {
                 "code": "t1",
                 "name": "n1",
                 "date": "/Date(1375243200000)/"
             }),
+        ))
+
+    def _setup_sync_mapping_v4(self):
+        """set up test data to break into the `unique_together` check of the `_process_record` call"""
+        self._setup_sync()
+        m = mock.Mock(spec=['_meta'])
+        self.synchronizer_class.MAPPING = {
+            'partner': {
+                "code": "VENDOR_CODE",
+                "name": "VENDOR_NAME",
+                "desc": "DESCRIPTION",
+                "date": "date",
+                "blocked": "blocked",
+            },
+        }
+
+        for value in self.synchronizer_class.MAPPING['partner'].keys():
+            setattr(m._meta, value, mock.Mock(spec=['unique']))
+            m._meta.value.unique = False
+
+        keys = {k:{'unique':False} for k in self.synchronizer_class.MAPPING['partner'].keys()}
+        # m = mock.Mock(json.loads(json.dumps({'_meta': keys})))
+        m = mock.Mock(spec={'_meta': keys})
+
+        print('m._meta.code.unique', m._meta.code.unique)
+        print('m._meta.code.unique is False', m._meta.code.unique is False)
+
+        self.synchronizer_class.MODEL_MAPPING = OrderedDict((
+            ('partner', m),
         ))
 
     def _setup_test_records(self):
@@ -475,8 +511,8 @@ class TestManualVisionSynchronizer(TestCase):
         # Ensure correct initialisation by checking logs
         self.assertEqual(mock_logger_info.call_count, 1)
 
-    def test_save_records(self):
-        self._setup_sync()
+    def test_save_records_mapping_v1(self):
+        self._setup_sync_mapping_v1()
         test_records = self._setup_test_records()
 
         syncronizer = self.synchronizer_class(business_area_code='ABC')
@@ -491,6 +527,13 @@ class TestManualVisionSynchronizer(TestCase):
 
     def test_save_records_mapping_v3(self):
         self._setup_sync_mapping_v3()
+        test_records = self._setup_test_records()
+
+        syncronizer = self.synchronizer_class(business_area_code='ABC')
+        syncronizer._save_records(test_records)
+
+    def test_save_records_mapping_v4(self):
+        self._setup_sync_mapping_v4()
         test_records = self._setup_test_records()
 
         syncronizer = self.synchronizer_class(business_area_code='ABC')

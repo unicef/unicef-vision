@@ -203,23 +203,17 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
     def _process_record(self, json_item):
         try:
             for model_name, model in self.MODEL_MAPPING.items():
+                # print('----------------', model_name, model)
+                # print('----------------', model._meta.code.unique)
                 mapped_item = dict(
                     [(field_name, self._get_field_value(field_name, field_json_code, json_item, model))
                      for field_name, field_json_code in self.MAPPING[model_name].items()]
                 )
 
-                # print('mapped_item', mapped_item)
-                # for field_name, value in mapped_item.items():
-                #     print('model._meta.get_field(field_name).unique', model._meta.get_field(field_name).unique)
-
                 kwargs = dict(
                     [(field_name, value) for field_name, value in mapped_item.items()
                      if model._meta.get_field(field_name).unique]
                 )
-
-                # print('\n------------------------')
-                # print('kwargs', kwargs)
-                # print('\n------------------------')
 
                 if not kwargs:
                     for fields in model._meta.unique_together:
