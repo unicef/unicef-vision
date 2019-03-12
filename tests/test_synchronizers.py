@@ -6,6 +6,7 @@ import types
 
 from datetime import datetime
 from collections import OrderedDict
+from django.db.models import NOT_PROVIDED
 from django.conf import settings
 from django.test import override_settings, TestCase
 from django.utils.timezone import now as django_now
@@ -365,6 +366,7 @@ class TestManualVisionSynchronizer(TestCase):
         self.synchronizer_class.ENDPOINT = 'GetSomeStuff_JSON'
 
     def _setup_sync(self):
+        """set up syncronyzer class defaults and mappings"""
         self.synchronizer_class.REQUIRED_KEYS = (
             "VENDOR_CODE",
             "VENDOR_NAME",
@@ -393,7 +395,7 @@ class TestManualVisionSynchronizer(TestCase):
         self._setup_sync()
 
     def _setup_sync_mapping_v2(self):
-        """set up partner model as callable types.FunctionType"""
+        """set up partner model as callable of type types.FunctionType"""
         def f_type(): pass
 
         self._setup_sync()
@@ -432,34 +434,36 @@ class TestManualVisionSynchronizer(TestCase):
 
     def _setup_sync_mapping_v4(self):
         """set up test data to break into the `unique_together` check of the `_process_record` call"""
+
+        def get_m_field(field):
+            return m._meta.fields[field]
+
         self._setup_sync()
-        m = mock.Mock(spec=['_meta'])
         self.synchronizer_class.MAPPING = {
             'partner': {
                 "code": "VENDOR_CODE",
                 "name": "VENDOR_NAME",
-                "desc": "DESCRIPTION",
                 "date": "date",
-                "blocked": "blocked",
             },
         }
 
+        m = mock.Mock(spec=['_meta'])
+        m._meta.fields = {}
+        m._meta.get_field = get_m_field
+        m._meta.unique_together = [self.synchronizer_class.MAPPING['partner'].keys()]
+
         for value in self.synchronizer_class.MAPPING['partner'].keys():
-            setattr(m._meta, value, mock.Mock(spec=['unique']))
-            m._meta.value.unique = False
+            mval = mock.Mock(spec=[value], value=value)
+            setattr(mval, 'unique', False)
+            m._meta.fields[value] = mval
 
-        keys = {k:{'unique':False} for k in self.synchronizer_class.MAPPING['partner'].keys()}
-        # m = mock.Mock(json.loads(json.dumps({'_meta': keys})))
-        m = mock.Mock(spec={'_meta': keys})
-
-        print('m._meta.code.unique', m._meta.code.unique)
-        print('m._meta.code.unique is False', m._meta.code.unique is False)
-
+        self.synchronizer_class.m = m
         self.synchronizer_class.MODEL_MAPPING = OrderedDict((
             ('partner', m),
         ))
 
     def _setup_test_records(self):
+        """set up samples of imported JSON data"""
         return [
             {
                 "partner": 1,
@@ -519,6 +523,7 @@ class TestManualVisionSynchronizer(TestCase):
         syncronizer._save_records(test_records)
 
     def test_save_records_mapping_v2(self):
+        """test with MODEL_MAPPING as a callable function"""
         self._setup_sync_mapping_v2()
         test_records = self._setup_test_records()
 
@@ -526,6 +531,7 @@ class TestManualVisionSynchronizer(TestCase):
         syncronizer._save_records(test_records)
 
     def test_save_records_mapping_v3(self):
+        """test with MODEL_MAPPING as a hard-coded set"""
         self._setup_sync_mapping_v3()
         test_records = self._setup_test_records()
 
@@ -533,8 +539,20 @@ class TestManualVisionSynchronizer(TestCase):
         syncronizer._save_records(test_records)
 
     def test_save_records_mapping_v4(self):
+        """test with MODEL_MAPPING as a Mock with filled model `unique`, `unique_together` and field `defaults`"""
         self._setup_sync_mapping_v4()
         test_records = self._setup_test_records()
 
+        # test with full `unique_together`
         syncronizer = self.synchronizer_class(business_area_code='ABC')
+        syncronizer._save_records(test_records)
+
+        # test partial `unique_together`
+        syncronizer.m._meta.unique_together = ['code', 'name']
+        syncronizer._save_records(test_records)
+
+        # add back 'desc' to the mapping to test when it's missing and it's also NOT_PROVIDED
+        self.synchronizer_class.MAPPING['partner']['desc'] = 'desc'
+        syncronizer.m._meta.fields['desc'] = mock.Mock(spec=['desc'], value='desc')
+        setattr(syncronizer.m._meta.fields['desc'], 'default', NOT_PROVIDED)
         syncronizer._save_records(test_records)
