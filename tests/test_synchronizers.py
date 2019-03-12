@@ -450,7 +450,6 @@ class TestManualVisionSynchronizer(TestCase):
         m = mock.Mock(spec=['_meta'])
         m._meta.fields = {}
         m._meta.get_field = get_m_field
-        m._meta.unique_together = [self.synchronizer_class.MAPPING['partner'].keys()]
 
         for value in self.synchronizer_class.MAPPING['partner'].keys():
             mval = mock.Mock(spec=[value], value=value)
@@ -545,6 +544,7 @@ class TestManualVisionSynchronizer(TestCase):
 
         # test with full `unique_together`
         syncronizer = self.synchronizer_class(business_area_code='ABC')
+        syncronizer.m._meta.unique_together = [syncronizer.MAPPING['partner'].keys()]
         syncronizer._save_records(test_records)
 
         # test partial `unique_together`
