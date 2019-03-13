@@ -185,11 +185,9 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
         else:
             # field can be used as it is without custom mappings. if field has default, it should be used
             result = json_item.get(field_json_code, Empty)
-
             if result is Empty:
                 # try to get default for field
                 field_default = model._meta.get_field(field_name).default
-
                 if field_default is not NOT_PROVIDED:
                     result = field_default
 
@@ -199,7 +197,6 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
         ).get(field_name, None)
         if value_handler:
             result = value_handler(result)
-
         return result
 
     def _process_record(self, json_item):
@@ -209,7 +206,6 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
                     [(field_name, self._get_field_value(field_name, field_json_code, json_item, model))
                      for field_name, field_json_code in self.MAPPING[model_name].items()]
                 )
-
                 kwargs = dict(
                     [(field_name, value) for field_name, value in mapped_item.items()
                      if model._meta.get_field(field_name).unique]

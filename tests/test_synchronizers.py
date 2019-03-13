@@ -483,6 +483,13 @@ class TestManualVisionSynchronizer(TestCase):
             },
         ]
 
+    def _assertResultFundamentals(self, records, processed, filtered):
+        """Assert some of the expected values of the result of the save_records call"""
+        # Usually the nr. of the importable filtered records should be the same as the nr. of imported records
+        self.assertEqual(len(records), 3)
+        self.assertEqual(processed, 2)
+        self.assertEqual(len(filtered), 2)
+
     def test_instantiation_no_business_area_code(self):
         """Ensure I can't create a synchronizer without specifying a business_area_code"""
         with self.assertRaises(VisionException) as context_manager:
@@ -519,7 +526,20 @@ class TestManualVisionSynchronizer(TestCase):
         test_records = self._setup_test_records()
 
         syncronizer = self.synchronizer_class(business_area_code='ABC')
-        syncronizer._save_records(test_records)
+        filtered = syncronizer._filter_records(test_records)
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
+
+        no_records_processed = syncronizer._save_records([])
+        self.assertEqual(no_records_processed, 0)
+
+        """
+        # `_save_records` buries exceptions.. not sure how is this doable
+        test_records[0]['date'] = 'Invalid Date'
+        with self.assertRaises(Exception) as context_manager:
+            syncronizer._save_records(test_records)
+            self.assertEqual('Exception processing record', str(context_manager.exception))
+        """
 
     def test_save_records_mapping_v2(self):
         """test with MODEL_MAPPING as a callable function"""
@@ -527,7 +547,12 @@ class TestManualVisionSynchronizer(TestCase):
         test_records = self._setup_test_records()
 
         syncronizer = self.synchronizer_class(business_area_code='ABC')
-        syncronizer._save_records(test_records)
+        filtered = syncronizer._filter_records(test_records)
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
+
+        no_records_processed = syncronizer._save_records([])
+        self.assertEqual(no_records_processed, 0)
 
     def test_save_records_mapping_v3(self):
         """test with MODEL_MAPPING as a hard-coded set"""
@@ -535,7 +560,12 @@ class TestManualVisionSynchronizer(TestCase):
         test_records = self._setup_test_records()
 
         syncronizer = self.synchronizer_class(business_area_code='ABC')
-        syncronizer._save_records(test_records)
+        filtered = syncronizer._filter_records(test_records)
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
+
+        no_records_processed = syncronizer._save_records([])
+        self.assertEqual(no_records_processed, 0)
 
     def test_save_records_mapping_v4(self):
         """test with MODEL_MAPPING as a Mock with filled model `unique`, `unique_together` and field `defaults`"""
@@ -544,15 +574,23 @@ class TestManualVisionSynchronizer(TestCase):
 
         # test with full `unique_together`
         syncronizer = self.synchronizer_class(business_area_code='ABC')
+        filtered = syncronizer._filter_records(test_records)
+
         syncronizer.m._meta.unique_together = [syncronizer.MAPPING['partner'].keys()]
-        syncronizer._save_records(test_records)
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
 
         # test partial `unique_together`
         syncronizer.m._meta.unique_together = ['code', 'name']
-        syncronizer._save_records(test_records)
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
 
         # add back 'desc' to the mapping to test when it's missing and it's also NOT_PROVIDED
         self.synchronizer_class.MAPPING['partner']['desc'] = 'desc'
         syncronizer.m._meta.fields['desc'] = mock.Mock(spec=['desc'], value='desc')
         setattr(syncronizer.m._meta.fields['desc'], 'default', NOT_PROVIDED)
-        syncronizer._save_records(test_records)
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
+
+        no_records_processed = syncronizer._save_records([])
+        self.assertEqual(no_records_processed, 0)
