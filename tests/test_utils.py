@@ -12,10 +12,10 @@ FAUX_VISION_USER = 'jane_user'
 FAUX_VISION_PASSWORD = 'password123'
 
 
+@override_settings(VISION_URL=FAUX_VISION_URL)
+@override_settings(VISION_USER=FAUX_VISION_USER)
+@override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
 class TestGetDataFromInsight(SimpleTestCase):
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
     @mock.patch('unicef_vision.utils.requests.get')
     def test_status_http_error(self, mock_requests):
         mock_response = mock.Mock()
@@ -27,9 +27,6 @@ class TestGetDataFromInsight(SimpleTestCase):
         self.assertFalse(status)
         self.assertEqual(reason, 'Loading data from Vision Failed, status {}'.format(mock_response.status_code))
 
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
     @mock.patch('unicef_vision.utils.requests.get')
     def test_invalid_request(self, mock_requests):
         mock_response = mock.Mock()
@@ -45,9 +42,6 @@ class TestGetDataFromInsight(SimpleTestCase):
             'Loading data from Vision Failed, no valid response returned for data: {}'.format(data)
         )
 
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
     @mock.patch('unicef_vision.utils.requests.get')
     def test_status_http_ok(self, mock_requests):
         mock_response = mock.Mock()

@@ -145,6 +145,8 @@ class FileDataSynchronizer(DataSynchronizer):
         self.business_area_code = business_area_code
         logger.info('business_area_code is {}'.format(business_area_code))
 
+        # super().__init__(business_area_code, *args, **kwargs)
+
 
 class MultiModelDataSynchronizer(VisionDataSynchronizer):
     MODEL_MAPPING = {}
