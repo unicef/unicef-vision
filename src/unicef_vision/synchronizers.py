@@ -30,15 +30,15 @@ class DataSynchronizer:
     business_area_code = None
 
     @abstractmethod
-    def _convert_records(self, records):
+    def _convert_records(self, records):    # pragma: no cover
         pass
 
     @abstractmethod
-    def _save_records(self, records):
+    def _save_records(self, records):   # pragma: no cover
         pass
 
     @abstractmethod
-    def _get_kwargs(self):
+    def _get_kwargs(self):  # pragma: no cover
         return {}
 
     def _filter_records(self, records):
@@ -50,7 +50,7 @@ class DataSynchronizer:
 
         return [rec for rec in records if is_valid_record(rec)]
 
-    def preload(self):
+    def preload(self):  # pragma: no cover
         """hook to execute custom code before loading"""
         pass
 
@@ -143,7 +143,7 @@ class FileDataSynchronizer(DataSynchronizer):
 
         self.filename = filename
         self.business_area_code = business_area_code
-        logger.info('Business_area_code is {}'.format(business_area_code))
+        logger.info('business_area_code is {}'.format(business_area_code))
 
         super().__init__(business_area_code, *args, **kwargs)
 
