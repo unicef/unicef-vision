@@ -1,6 +1,4 @@
-# coding=utf-8
-from tests import factories
-
+from demo import factories
 import pytest
 
 

@@ -11,3 +11,5 @@ coverage.xml
 .tox/
 .pytest_cache/
 tests/demoproject/db.sqlite3
+Pipfile
+Pipfile.lock

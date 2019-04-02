@@ -27,3 +27,4 @@ ignore =
 ;    H405,
 
 exclude =
+    */migrations,
