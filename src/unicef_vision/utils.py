@@ -1,4 +1,35 @@
 import datetime
+import json
+
+import requests
+from django.apps import apps
+from django.conf import settings
+
+
+def get_vision_logger_domain_model():
+    get_model = apps.get_model
+    return get_model(settings.VISION_LOGGER_MODEL)
+
+
+def get_data_from_insight(endpoint, data={}):
+    url = '{}/{}'.format(
+        settings.VISION_URL,
+        endpoint
+    ).format(**data)
+
+    response = requests.get(
+        url,
+        headers={'Content-Type': 'application/json'},
+        auth=(settings.VISION_USER, settings.VISION_PASSWORD),
+        verify=False
+    )
+    if response.status_code != 200:
+        return False, 'Loading data from Vision Failed, status {}'.format(response.status_code)
+    try:
+        result = json.loads(response.json())
+    except ValueError:
+        return False, 'Loading data from Vision Failed, no valid response returned for data: {}'.format(data)
+    return True, result
 
 
 def wcf_json_date_as_datetime(jd):

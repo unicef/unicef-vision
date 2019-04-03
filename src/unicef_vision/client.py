@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding=utf-8
-
 import argparse
 import json
 import logging
@@ -11,16 +8,13 @@ import requests
 from django.conf import settings
 from requests.auth import HTTPDigestAuth
 
-from .exceptions import VisionException
-
 logger = logging.getLogger(__name__)
 
 
-class VisionAPIClient(object):
-    """
-    """
+class VisionAPIClient:
+    """Client to Synchronize with Vision"""
 
-    def __init__(self, username=None, password=None,  base_url=settings.VISION_URL):
+    def __init__(self, username=None, password=None, base_url=settings.VISION_URL):
         self.base_url = base_url
         if username and password:
             self.auth = HTTPDigestAuth(username, password)
@@ -69,9 +63,7 @@ class VisionAPIClient(object):
 
 
 def main():
-    """
-    Main method for command line usage
-    """
+    """Main method for command line usage"""
     parser = argparse.ArgumentParser(description='VISION API Python Client')
 
     parser.add_argument('-U', '--username',
@@ -84,12 +76,8 @@ def main():
                         help='Optional password for authentication')
 
     args = parser.parse_args()
-
-    try:
-        VisionAPIClient(username=args.username, password=args.password)
-    except VisionException:
-        logger.exception("Exception in vision client")
+    VisionAPIClient(username=args.username, password=args.password)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()

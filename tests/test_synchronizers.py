@@ -1,26 +1,32 @@
+import copy
+import json
 import mock
+import os
+import types
+
+from datetime import datetime
+from collections import OrderedDict
+from django.db.models import NOT_PROVIDED
 from django.conf import settings
-from django.test import override_settings
+from django.test import override_settings, TestCase
 from django.utils.timezone import now as django_now
 
-import pytest
-from unittest import TestCase
-
 from unicef_vision.exceptions import VisionException
-from unicef_vision.models import VisionSyncLog
-from unicef_vision.synchronizers import ManualDataLoader
-from unicef_vision.vision_data_synchronizer import VISION_NO_DATA_MESSAGE, VisionDataLoader, VisionDataSynchronizer
+from unicef_vision.synchronizers import (
+    VisionDataSynchronizer,
+    FileDataSynchronizer,
+    MultiModelDataSynchronizer,
+    ManualVisionSynchronizer
+)
+from unicef_vision.vision.models import VisionLog
 
 FAUX_VISION_URL = 'https://api.example.com/foo.svc/'
 FAUX_VISION_USER = 'jane_user'
 FAUX_VISION_PASSWORD = 'password123'
 
-pytestmark = pytest.mark.django_db
-
 
 class _MySynchronizer(VisionDataSynchronizer):
     """Bare bones synchronizer class. Exists because VisionDataSynchronizer is abstract; this is concrete but
-    does as little as possible.
     """
     ENDPOINT = 'GetSomeStuff_JSON'
 
@@ -31,121 +37,38 @@ class _MySynchronizer(VisionDataSynchronizer):
         pass
 
 
-class TestVisionDataLoader(TestCase):
-    """Exercise VisionDataLoader class"""
-    # Note - I don't understand why, but @override_settings(VISION_URL=FAUX_VISION_URL) doesn't work when I apply
-    # it at the TestCase class level instead of each individual test case.
-
-    def _assertGetFundamentals(self, url, mock_requests, mock_get_response):
-        """Assert common things about the call to loader.get()"""
-        # Ensure requests.get() was called as expected
-        self.assertEqual(mock_requests.get.call_count, 1)
-        self.assertEqual(mock_requests.get.call_args[0], (url, ))
-        self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json'},
-                                                          'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
-                                                          'verify': False})
-        # Ensure response.json() was called as expected
-        self.assertEqual(mock_get_response.json.call_count, 1)
-        self.assertEqual(mock_get_response.json.call_args[0], tuple())
-        self.assertEqual(mock_get_response.json.call_args[1], {})
-
-    def test_instantiation_no_country(self):
-        """Ensure I can create a loader without specifying a country"""
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
-        self.assertEqual(loader.url, '{}/GetSomeStuff_JSON'.format(loader.URL))
-
-    def test_instantiation_url_construction(self):
-        """Ensure loader URL is constructed correctly regardless of whether or not base URL ends with a slash"""
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
-        self.assertEqual(loader.url, '{}/GetSomeStuff_JSON'.format(loader.URL))
-
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
-    @mock.patch('unicef_vision.vision_data_synchronizer.requests', spec=['get'])
-    def test_get_success_with_response(self, mock_requests):
-        """Test loader.get() when the response is 200 OK and data is returned"""
-        mock_get_response = mock.Mock(spec=['status_code', 'json'])
-        mock_get_response.status_code = 200
-        mock_get_response.json = mock.Mock(return_value=[42])
-        mock_requests.get = mock.Mock(return_value=mock_get_response)
-
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
-        response = loader.get()
-
-        self._assertGetFundamentals(loader.url, mock_requests, mock_get_response)
-
-        self.assertEqual(response, [42])
-
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
-    @mock.patch('unicef_vision.vision_data_synchronizer.requests', spec=['get'])
-    def test_get_success_no_response(self, mock_requests):
-        """Test loader.get() when the response is 200 OK but no data is returned"""
-        mock_get_response = mock.Mock(spec=['status_code', 'json'])
-        mock_get_response.status_code = 200
-        mock_get_response.json = mock.Mock(return_value=VISION_NO_DATA_MESSAGE)
-        mock_requests.get = mock.Mock(return_value=mock_get_response)
-
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
-        response = loader.get()
-
-        self._assertGetFundamentals(loader.url, mock_requests, mock_get_response)
-
-        self.assertEqual(response, [])
-
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
-    @mock.patch('unicef_vision.vision_data_synchronizer.requests', spec=['get'])
-    def test_get_failure(self, mock_requests):
-        """Test loader.get() when the response is something other than 200"""
-        # Note that in contrast to the other mock_get_response variables declared in this test case, this one
-        # doesn't have 'json' in the spec. I don't expect the loaderto access response.json during this test, so if
-        # it does this configuration ensures the test will fail.
-        mock_get_response = mock.Mock(spec=['status_code'])
-        mock_get_response.status_code = 401
-        mock_requests.get = mock.Mock(return_value=mock_get_response)
-
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
-        with self.assertRaises(VisionException) as context_manager:
-            loader.get()
-
-        # Assert that the status code is repeated in the message of the raised exception.
-        self.assertIn('401', str(context_manager.exception))
-
-        # Ensure get was called as normal.
-        self.assertEqual(mock_requests.get.call_count, 1)
-        self.assertEqual(mock_requests.get.call_args[0], (loader.url, ))
-        self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json'},
-                                                          'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
-                                                          'verify': False})
-
-
 class TestVisionDataSynchronizerInit(TestCase):
     """Exercise initialization of VisionDataSynchronizer class"""
 
+    def setUp(self):
+        self.synchronizer_class = _MySynchronizer
+
+    def test_instantiation_no_business_area_code(self):
+        """Ensure I can't create a synchronizer without specifying a business_area_code"""
+        with self.assertRaises(VisionException) as context_manager:
+            self.synchronizer_class()
+
+        self.assertEqual('business_area_code is required', str(context_manager.exception))
+
     def test_instantiation_no_endpoint(self):
         """Ensure I can't create a synchronizer without specifying an endpoint"""
-        class _MyBadSynchronizer(_MySynchronizer):
+        class _MyBadSynchronizer(self.synchronizer_class):
             """Synchronizer class that doesn't set self.ENDPOINT"""
             ENDPOINT = None
 
+        test_business_area_code = 'ABC'
+
         with self.assertRaises(VisionException) as context_manager:
-            _MyBadSynchronizer()
+            _MyBadSynchronizer(business_area_code=test_business_area_code)
 
         self.assertEqual('You must set the ENDPOINT name', str(context_manager.exception))
 
-    @mock.patch('unicef_vision.vision_data_synchronizer.connection', spec=['set_tenant'])
-    @mock.patch('unicef_vision.vision_data_synchronizer.logger.info')
-    def test_instantiation_positive(self, mock_logger_info, mock_connection):
+    @mock.patch('unicef_vision.synchronizers.logger.info')
+    def test_instantiation_positive(self, mock_logger_info):
         """Exercise successfully creating a synchronizer"""
-        _MySynchronizer()
+        test_business_area_code = 'ABC'
 
-        # Ensure tenant is set
-        self.assertEqual(mock_connection.set_tenant.call_count, 1)
-        self.assertEqual(mock_connection.set_tenant.call_args[0], {})
+        self.synchronizer_class(business_area_code=test_business_area_code)
 
         # Ensure msgs are logged
         self.assertEqual(mock_logger_info.call_count, 2)
@@ -153,22 +76,25 @@ class TestVisionDataSynchronizerInit(TestCase):
         self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg, ))
         self.assertEqual(mock_logger_info.call_args_list[0][1], {})
 
+        expected_msg = 'business_area_code is ' + test_business_area_code
+        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[1][1], {})
+
 
 class TestVisionDataSynchronizerSync(TestCase):
     """Exercise the sync() method of VisionDataSynchronizer class"""
 
-    def _assertVisionSyncLogFundamentals(self, total_records, total_processed, details='', exception_message='',
+    def _assertVisionLogFundamentals(self, total_records, total_processed, details='', exception_message='',
                                          successful=True):
-        """Assert common properties of the VisionSyncLog record that should have been created during a test. Populate
-        the method parameters with what you expect to see in the VisionSyncLog record.
+        """Assert common properties of the VisionLog record that should have been created during a test. Populate
+        the method parameters with what you expect to see in the VisionLog record.
         """
-        sync_logs = VisionSyncLog.objects.all()
+        sync_logs = VisionLog.objects.all()
 
         self.assertEqual(len(sync_logs), 1)
 
         sync_log = sync_logs[0]
 
-        self.assertEqual(sync_log.country.pk, self.test_country.pk)
         self.assertEqual(sync_log.handler_name, '_MySynchronizer')
         self.assertEqual(sync_log.total_records, total_records)
         self.assertEqual(sync_log.total_processed, total_processed)
@@ -187,19 +113,21 @@ class TestVisionDataSynchronizerSync(TestCase):
         self.assertLess(delta.seconds, 5)
 
     def setUp(self):
-        self.assertEqual(VisionSyncLog.objects.all().count(), 0)
+        self.assertEqual(VisionLog.objects.all().count(), 0)
+        self.test_business_area_code = 'ABC'
+        self.synchronizer_class = _MySynchronizer
 
-    @mock.patch('.unicef_vision.vision_data_synchronizer.logger.info')
+    @mock.patch('unicef_vision.synchronizers.logger.info')
     def test_sync_positive(self, mock_logger_info):
         """Test calling sync() for the mainstream case of success. Tests the following --
-            - A VisionSyncLog instance is created and has the expected values
+            - A VisionLog instance is created and has the expected values
             - # of records returned by vision can differ from the # returned by synchronizer._convert_records()
             - synchronizer._save_records() can return an int (instead of a dict)
-            - The int returned by synchronizer._save_records() is recorded properly in the VisionSyncLog record
+            - The int returned by synchronizer._save_records() is recorded properly in the VisionLog record
             - logger.info() is called as expected
             - All calls to synchronizer methods have expected args
         """
-        synchronizer = _MySynchronizer(country=self.test_country)
+        synchronizer = self.synchronizer_class(business_area_code=self.test_business_area_code)
 
         # These are the dummy records that vision will "return" via mock_loader.get()
         vision_records = [42, 43, 44]
@@ -227,7 +155,7 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         self.assertEqual(MockLoaderClass.call_count, 1)
         self.assertEqual(MockLoaderClass.call_args[0], tuple())
-        self.assertEqual(MockLoaderClass.call_args[1], {'country': self.test_country,
+        self.assertEqual(MockLoaderClass.call_args[1], {'business_area_code': self.test_business_area_code,
                                                         'endpoint': 'GetSomeStuff_JSON'})
 
         self.assertEqual(mock_loader.get.call_count, 1)
@@ -252,13 +180,13 @@ class TestVisionDataSynchronizerSync(TestCase):
         self.assertEqual(mock_logger_info.call_args_list[3][0], (expected_msg, ))
         self.assertEqual(mock_logger_info.call_args_list[3][1], {})
 
-        self._assertVisionSyncLogFundamentals(len(converted_records), 99)
+        self._assertVisionLogFundamentals(len(converted_records), 99)
 
     def test_sync_save_records_returns_dict(self):
         """Test calling sync() when _save_records() returns a dict. Tests that sync() provides default values
         as necessary and that values in the dict returned by _save_records() are logged.
         """
-        synchronizer = _MySynchronizer(country=self.test_country)
+        synchronizer = self.synchronizer_class(business_area_code=self.test_business_area_code)
 
         # These are the dummy records that vision will "return" via mock_loader.get()
         records = [42, 43, 44]
@@ -288,19 +216,19 @@ class TestVisionDataSynchronizerSync(TestCase):
         # Setup is done, now call sync().
         synchronizer.sync()
 
-        self._assertVisionSyncLogFundamentals(len(records), 0)
+        self._assertVisionLogFundamentals(len(records), 0)
 
         # Get rid of this log record to simplify the remainder of the test.
-        VisionSyncLog.objects.all()[0].delete()
+        VisionLog.objects.all()[0].delete()
 
         # Call sync again.
         synchronizer.sync()
 
-        self._assertVisionSyncLogFundamentals(200, 100, details='Hello world!')
+        self._assertVisionLogFundamentals(200, 100, details='Hello world!')
 
     def test_sync_passes_loader_kwargs(self):
         """Test that LOADER_EXTRA_KWARGS on the synchronizer are passed to the loader."""
-        class _MyFancySynchronizer(_MySynchronizer):
+        class _MyFancySynchronizer(self.synchronizer_class):
             """Synchronizer class that uses LOADER_EXTRA_KWARGS"""
             LOADER_EXTRA_KWARGS = ['FROBNICATE', 'POTRZEBIE']
             FROBNICATE = True
@@ -312,7 +240,7 @@ class TestVisionDataSynchronizerSync(TestCase):
             def _save_records(self, records):
                 return 0
 
-        synchronizer = _MyFancySynchronizer(country=self.test_country)
+        synchronizer = _MyFancySynchronizer(business_area_code=self.test_business_area_code)
 
         mock_loader = mock.Mock()
         mock_loader.get.return_value = [42, 43, 44]
@@ -325,15 +253,15 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         self.assertEqual(MockLoaderClass.call_count, 1)
         self.assertEqual(MockLoaderClass.call_args[0], tuple())
-        self.assertEqual(MockLoaderClass.call_args[1], {'country': self.test_country,
+        self.assertEqual(MockLoaderClass.call_args[1], {'business_area_code': self.test_business_area_code,
                                                         'endpoint': 'GetSomeStuff_JSON',
                                                         'FROBNICATE': True,
                                                         'POTRZEBIE': 2.2})
 
-    @mock.patch('.unicef_vision.vision_data_synchronizer.logger.info')
+    @mock.patch('unicef_vision.synchronizers.logger.info')
     def test_sync_exception_handling(self, mock_logger_info):
         """Test sync() exception handling behavior."""
-        synchronizer = _MySynchronizer(country=self.test_country)
+        synchronizer = self.synchronizer_class(business_area_code=self.test_business_area_code)
 
         # Force a failure in the attempt to get vision records
         def loader_get_side_effect():
@@ -365,24 +293,304 @@ class TestVisionDataSynchronizerSync(TestCase):
         self.assertEqual(mock_logger_info.call_args_list[2][0], (expected_msg, ))
         self.assertEqual(mock_logger_info.call_args_list[2][1], {'exc_info': True})
 
-        self._assertVisionSyncLogFundamentals(0, 0, exception_message='Wrong!', successful=False)
+        self._assertVisionLogFundamentals(0, 0, exception_message='Wrong!', successful=False)
 
 
-class TestManualDataLoader(TestCase):
-    def test_init_no_endpoint_no_object_number(self):
-        with self.assertRaisesRegexp(
-                VisionException,
-                "You must set the ENDPOINT"
-        ):
-            ManualDataLoader()
+class TestFileDataSynchronizer(TestCase):
+    """
+    Exercise initialization of FileDataSynchronizer class
+    TODO: test sync maybe
+    """
 
-    def test_init_no_endpoint(self):
-        with self.assertRaisesRegexp(
-                VisionException,
-                "You must set the ENDPOINT"
-        ):
-            ManualDataLoader(object_number="123")
+    def setUp(self):
+        self.synchronizer_class = FileDataSynchronizer
+        self.synchronizer_class.ENDPOINT = 'GetSomeStuff_JSON'
 
-    def test_init(self):
-        a = ManualDataLoader(endpoint="api", object_number="123")
-        self.assertEqual(a.url, "{}/api/123".format(settings.VISION_URL))
+    def test_instantiation_no_business_area_code(self):
+        """Ensure I can't create a synchronizer without specifying a business_area_code"""
+        with self.assertRaises(VisionException) as context_manager:
+            self.synchronizer_class()
+
+        self.assertEqual('business_area_code is required', str(context_manager.exception))
+
+    def test_instantiation_no_filename(self):
+        """Ensure I can't create a synchronizer without specifying a filename"""
+        test_business_area_code = 'ABC'
+
+        with self.assertRaises(VisionException) as context_manager:
+            self.synchronizer_class(business_area_code=test_business_area_code, filename=None)
+
+        self.assertEqual('You need provide the path to the file', str(context_manager.exception))
+
+    @mock.patch('unicef_vision.synchronizers.logger.info')
+    def test_instantiation_positive(self, mock_logger_info):
+        """Exercise successfully creating a synchronizer"""
+        test_business_area_code = 'ABC'
+        test_filename = 'tests/test.json'
+
+        self.synchronizer_class(business_area_code=test_business_area_code, filename=test_filename)
+
+        # Ensure msgs are logged
+        self.assertEqual(mock_logger_info.call_count, 2)
+        expected_msg = 'Synchronizer is FileDataSynchronizer'
+        self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[0][1], {})
+
+        expected_msg = 'business_area_code is ' + test_business_area_code
+        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[1][1], {})
+
+
+class TestMultiModelDataSynchronizer(TestCase):
+
+    def setUp(self):
+        test_business_area_code = 'ABC'
+        self.synchronizer_class = MultiModelDataSynchronizer
+        self.synchronizer_class.ENDPOINT = 'GetSomeStuff_JSON'
+
+        self.synchronizer = self.synchronizer_class(business_area_code=test_business_area_code)
+
+    def test_convert_records(self):
+        list_records = [1,2,3]
+        self.assertEqual(list_records, self.synchronizer._convert_records(list_records))
+        list_records_str = '[1, 2, 3]'
+        self.assertEqual(list_records, self.synchronizer._convert_records(list_records_str))
+        self.assertListEqual([], self.synchronizer._convert_records('abcde'))
+
+
+class TestManualVisionSynchronizer(TestCase):
+    """Exercise initialization of ManualVisionSynchronizer class"""
+
+    def setUp(self):
+        self.synchronizer_class = ManualVisionSynchronizer
+        self.synchronizer_class.ENDPOINT = 'GetSomeStuff_JSON'
+
+    def _setup_sync(self):
+        """set up syncronyzer class defaults and mappings"""
+        self.synchronizer_class.REQUIRED_KEYS = (
+            "VENDOR_CODE",
+            "VENDOR_NAME",
+            "date",
+        )
+        self.synchronizer_class.MAPPING = {
+            'partner': {
+                "code": "VENDOR_CODE",
+                "name": "VENDOR_NAME",
+                "desc": "DESCRIPTION",
+                "date": "date",
+                "blocked": "blocked",
+            },
+        }
+        self.synchronizer_class.DATE_FIELDS = ['date']
+        self.synchronizer_class.FIELD_HANDLERS = {
+            'partner': {
+                "blocked": lambda x: True if x else False,
+            }
+        }
+        self.synchronizer_class.MODEL_MAPPING = OrderedDict((
+            ('partner', mock.Mock()),
+        ))
+
+    def _setup_sync_mapping_v1(self):
+        self._setup_sync()
+
+    def _setup_sync_mapping_v2(self):
+        """set up partner model as callable of type types.FunctionType"""
+        def f_type(): pass
+
+        self._setup_sync()
+
+        self.synchronizer_class.MAPPING = {
+            'partner': {
+                "partner": "partner",
+                "code": "VENDOR_CODE",
+                "name": "VENDOR_NAME",
+                "date": "date",
+            },
+        }
+        self.synchronizer_class.MODEL_MAPPING = OrderedDict((
+            ('partner', f_type),
+        ))
+
+    def _setup_sync_mapping_v3(self):
+        """set up test data as queryable fields of partner model class"""
+
+        self._setup_sync()
+        self.synchronizer_class.MAPPING = {
+            'partner': {
+                "partner": "partner",
+                "code": "VENDOR_CODE",
+                "name": "VENDOR_NAME",
+                "date": "date",
+            },
+        }
+        self.synchronizer_class.MODEL_MAPPING = OrderedDict((
+            ('partner', {
+                "code": "t1",
+                "name": "n1",
+                "date": "/Date(1375243200000)/"
+            }),
+        ))
+
+    def _setup_sync_mapping_v4(self):
+        """set up test data to break into the `unique_together` check of the `_process_record` call"""
+
+        def get_m_field(field):
+            return m._meta.fields[field]
+
+        self._setup_sync()
+        self.synchronizer_class.MAPPING = {
+            'partner': {
+                "code": "VENDOR_CODE",
+                "name": "VENDOR_NAME",
+                "date": "date",
+            },
+        }
+
+        m = mock.Mock(spec=['_meta'])
+        m._meta.fields = {}
+        m._meta.get_field = get_m_field
+
+        for value in self.synchronizer_class.MAPPING['partner'].keys():
+            mval = mock.Mock(spec=[value], value=value)
+            setattr(mval, 'unique', False)
+            m._meta.fields[value] = mval
+
+        self.synchronizer_class.m = m
+        self.synchronizer_class.MODEL_MAPPING = OrderedDict((
+            ('partner', m),
+        ))
+
+    def _setup_test_records(self):
+        """set up samples of imported JSON data"""
+        return [
+            {
+                "partner": 1,
+                "VENDOR_CODE": "t1",
+                "VENDOR_NAME": "n1",
+                "DESCRIPTION": "desc",
+                "date": "/Date(1375243200000)/",
+            }, {
+                "partner": 2,
+                "VENDOR_CODE": "t2",
+                "VENDOR_NAME": "",
+                "date": "/Date(1375243200000)/",
+                "blocked": True,
+            }, {
+                "code": "bad_key",
+                "name": "bad_key",
+                "date": "/Date(1375243200000)/"
+            },
+        ]
+
+    def _assertResultFundamentals(self, records, processed, filtered):
+        """Assert some of the expected values of the result of the save_records call"""
+        # Usually the nr. of the importable filtered records should be the same as the nr. of imported records
+        self.assertEqual(len(records), 3)
+        self.assertEqual(processed, 2)
+        self.assertEqual(len(filtered), 2)
+
+    def test_instantiation_no_business_area_code(self):
+        """Ensure I can't create a synchronizer without specifying a business_area_code"""
+        with self.assertRaises(VisionException) as context_manager:
+            self.synchronizer_class()
+
+        self.assertEqual('business_area_code is required', str(context_manager.exception))
+
+    def test_instantiation_object_number_no_endpoint(self):
+        test_business_area_code = 'ABC'
+        test_object_number = 1
+
+        class _MyBadSynchronizer(self.synchronizer_class):
+            """Synchronizer class that doesn't set self.ENDPOINT"""
+            ENDPOINT = None
+
+        with self.assertRaises(VisionException) as context_manager:
+            _MyBadSynchronizer(business_area_code=test_business_area_code, object_number=test_object_number)
+
+        self.assertEqual('You must set the ENDPOINT name', str(context_manager.exception))
+
+    @mock.patch('unicef_vision.synchronizers.logger.info')
+    def test_instantiation_positive_with_object_number(self, mock_logger_info):
+        """Exercise successfully creating a synchronizer"""
+        test_business_area_code = 'ABC'
+        test_object_number = 1
+
+        self.synchronizer_class(business_area_code=test_business_area_code, object_number=test_object_number)
+
+        # Ensure correct initialisation by checking logs
+        self.assertEqual(mock_logger_info.call_count, 1)
+
+    def test_save_records_mapping_v1(self):
+        self._setup_sync_mapping_v1()
+        test_records = self._setup_test_records()
+
+        syncronizer = self.synchronizer_class(business_area_code='ABC')
+        filtered = syncronizer._filter_records(test_records)
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
+
+        no_records_processed = syncronizer._save_records([])
+        self.assertEqual(no_records_processed, 0)
+
+        """
+        # `_save_records` buries exceptions.. not sure how is this doable
+        test_records[0]['date'] = 'Invalid Date'
+        with self.assertRaises(Exception) as context_manager:
+            syncronizer._save_records(test_records)
+            self.assertEqual('Exception processing record', str(context_manager.exception))
+        """
+
+    def test_save_records_mapping_v2(self):
+        """test with MODEL_MAPPING as a callable function"""
+        self._setup_sync_mapping_v2()
+        test_records = self._setup_test_records()
+
+        syncronizer = self.synchronizer_class(business_area_code='ABC')
+        filtered = syncronizer._filter_records(test_records)
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
+
+        no_records_processed = syncronizer._save_records([])
+        self.assertEqual(no_records_processed, 0)
+
+    def test_save_records_mapping_v3(self):
+        """test with MODEL_MAPPING as a hard-coded set"""
+        self._setup_sync_mapping_v3()
+        test_records = self._setup_test_records()
+
+        syncronizer = self.synchronizer_class(business_area_code='ABC')
+        filtered = syncronizer._filter_records(test_records)
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
+
+        no_records_processed = syncronizer._save_records([])
+        self.assertEqual(no_records_processed, 0)
+
+    def test_save_records_mapping_v4(self):
+        """test with MODEL_MAPPING as a Mock with filled model `unique`, `unique_together` and field `defaults`"""
+        self._setup_sync_mapping_v4()
+        test_records = self._setup_test_records()
+
+        # test with full `unique_together`
+        syncronizer = self.synchronizer_class(business_area_code='ABC')
+        filtered = syncronizer._filter_records(test_records)
+
+        syncronizer.m._meta.unique_together = [syncronizer.MAPPING['partner'].keys()]
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
+
+        # test partial `unique_together`
+        syncronizer.m._meta.unique_together = ['code', 'name']
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
+
+        # add back 'desc' to the mapping to test when it's missing and it's also NOT_PROVIDED
+        self.synchronizer_class.MAPPING['partner']['desc'] = 'desc'
+        syncronizer.m._meta.fields['desc'] = mock.Mock(spec=['desc'], value='desc')
+        setattr(syncronizer.m._meta.fields['desc'], 'default', NOT_PROVIDED)
+        processed = syncronizer._save_records(test_records)
+        self._assertResultFundamentals(test_records, processed, filtered)
+
+        no_records_processed = syncronizer._save_records([])
+        self.assertEqual(no_records_processed, 0)

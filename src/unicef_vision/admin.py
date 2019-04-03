@@ -1,9 +1,7 @@
 from django.contrib import admin
 
-from .models import VisionSyncLog
 
-
-class VisionSyncLogAdmin(admin.ModelAdmin):
+class VisionLoggerAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
@@ -29,6 +27,3 @@ class VisionSyncLogAdmin(admin.ModelAdmin):
         'exception_message',
         'date_processed',
     )
-
-
-admin.site.register(VisionSyncLog, VisionSyncLogAdmin)

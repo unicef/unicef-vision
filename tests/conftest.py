@@ -1,7 +1,5 @@
-# coding=utf-8
-import pytest
-
 from demo import factories
+import pytest
 
 
 @pytest.fixture

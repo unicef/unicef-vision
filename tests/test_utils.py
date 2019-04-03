@@ -1,8 +1,59 @@
 import datetime
+import json
+import mock
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from unicef_vision import utils
+from unicef_vision.loaders import VISION_NO_DATA_MESSAGE
+
+FAUX_VISION_URL = 'https://api.example.com/foo.svc/'
+FAUX_VISION_USER = 'jane_user'
+FAUX_VISION_PASSWORD = 'password123'
+
+
+@override_settings(VISION_URL=FAUX_VISION_URL)
+@override_settings(VISION_USER=FAUX_VISION_USER)
+@override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
+class TestGetDataFromInsight(SimpleTestCase):
+    @mock.patch('unicef_vision.utils.requests.get')
+    def test_status_http_error(self, mock_requests):
+        mock_response = mock.Mock()
+        mock_response.status_code = 404
+
+        mock_requests.return_value = mock_response
+        status, reason = utils.get_data_from_insight('GetSomeStuff_JSON')
+
+        self.assertFalse(status)
+        self.assertEqual(reason, 'Loading data from Vision Failed, status {}'.format(mock_response.status_code))
+
+    @mock.patch('unicef_vision.utils.requests.get')
+    def test_invalid_request(self, mock_requests):
+        mock_response = mock.Mock()
+        mock_response.status_code = 200
+        mock_response.json = mock.Mock(return_value=VISION_NO_DATA_MESSAGE)
+
+        data = {}
+        mock_requests.return_value = mock_response
+        status, reason = utils.get_data_from_insight('GetSomeStuff_JSON', data)
+        self.assertFalse(status)
+        self.assertEqual(
+            reason,
+            'Loading data from Vision Failed, no valid response returned for data: {}'.format(data)
+        )
+
+    @mock.patch('unicef_vision.utils.requests.get')
+    def test_status_http_ok(self, mock_requests):
+        mock_response = mock.Mock()
+        mock_response.status_code = 200
+        res = '{"v": 1}'
+        mock_response.json = mock.Mock(return_value=res)
+
+        mock_requests.return_value = mock_response
+        status, response = utils.get_data_from_insight('GetSomeStuff_JSON')
+
+        self.assertTrue(status)
+        self.assertEqual(response, json.loads(res))
 
 
 class TestWCFJSONDateAsDatetime(SimpleTestCase):
