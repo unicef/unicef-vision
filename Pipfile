@@ -1,0 +1,20 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+responses = "*"
+factory-boy = "*"
+pytest-django = "*"
+pytest-echo = "*"
+flake8 = "*"
+pytest-cov = "*"
+pytest-pythonpath = "*"
+
+[packages]
+requests = "*"
+django = "*"
+
+[requires]
+python_version = "3.6"

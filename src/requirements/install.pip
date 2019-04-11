@@ -1,0 +1,8 @@
+certifi
+chardet
+django
+idna
+pytz
+requests
+sqlparse
+urllib3
