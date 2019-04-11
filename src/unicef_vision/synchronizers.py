@@ -41,6 +41,13 @@ class DataSynchronizer:
     def _get_kwargs(self):  # pragma: no cover
         return {}
 
+    def __init__(self, business_area_code=None, *args, **kwargs) -> None:
+        if not business_area_code:
+            raise VisionException('business_area_code is required')
+        self.business_area_code = business_area_code
+        logger.info('Synchronizer is {}'.format(self.__class__.__name__))
+        logger.info('business_area_code is {}'.format(business_area_code))
+
     def _filter_records(self, records):
         def is_valid_record(record):
             for key in self.REQUIRED_KEYS:
@@ -106,17 +113,12 @@ class VisionDataSynchronizer(DataSynchronizer):
     ENDPOINT = None
     LOADER_CLASS = VisionDataLoader
 
-    def __init__(self, business_area_code=None):
-        if not business_area_code:
-            raise VisionException('business_area_code is required')
+    def __init__(self, business_area_code=None, *args, **kwargs) -> None:
+
+        super().__init__(business_area_code, *args, **kwargs)
+
         if self.ENDPOINT is None:
             raise VisionException('You must set the ENDPOINT name')
-
-        logger.info('Synchronizer is {}'.format(self.__class__.__name__))
-
-        self.business_area_code = business_area_code
-
-        logger.info('business_area_code is {}'.format(business_area_code))
 
     def _get_kwargs(self):
         return {
@@ -133,17 +135,11 @@ class FileDataSynchronizer(DataSynchronizer):
 
     def __init__(self, business_area_code=None, *args, **kwargs):
 
+        super().__init__(business_area_code, *args, **kwargs)
         filename = kwargs.get('filename', None)
-        if not business_area_code:
-            raise VisionException('business_area_code is required')
         if not filename:
             raise VisionException('You need provide the path to the file')
-
-        logger.info('Synchronizer is {}'.format(self.__class__.__name__))
-
         self.filename = filename
-        self.business_area_code = business_area_code
-        logger.info('business_area_code is {}'.format(business_area_code))
 
 
 class MultiModelDataSynchronizer(VisionDataSynchronizer):
