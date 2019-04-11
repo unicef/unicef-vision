@@ -1,22 +1,17 @@
-import copy
-import json
-import mock
-import os
-import types
-
-from datetime import datetime
 from collections import OrderedDict
+
 from django.db.models import NOT_PROVIDED
-from django.conf import settings
-from django.test import override_settings, TestCase
+from django.test import TestCase
 from django.utils.timezone import now as django_now
+
+from unittest import mock
 
 from unicef_vision.exceptions import VisionException
 from unicef_vision.synchronizers import (
-    VisionDataSynchronizer,
     FileDataSynchronizer,
+    ManualVisionSynchronizer,
     MultiModelDataSynchronizer,
-    ManualVisionSynchronizer
+    VisionDataSynchronizer,
 )
 from unicef_vision.vision.models import VisionLog
 
@@ -84,10 +79,17 @@ class TestVisionDataSynchronizerInit(TestCase):
 class TestVisionDataSynchronizerSync(TestCase):
     """Exercise the sync() method of VisionDataSynchronizer class"""
 
-    def _assertVisionLogFundamentals(self, total_records, total_processed, details='', exception_message='',
-                                         successful=True):
-        """Assert common properties of the VisionLog record that should have been created during a test. Populate
-        the method parameters with what you expect to see in the VisionLog record.
+    def _assertVisionLogFundamentals(
+            self,
+            total_records,
+            total_processed,
+            details='',
+            exception_message='',
+            successful=True
+    ):
+        """Assert common properties of the VisionLog record that should have
+        been created during a test. Populate the method parameters with what
+        you expect to see in the VisionLog record.
         """
         sync_logs = VisionLog.objects.all()
 
@@ -107,7 +109,8 @@ class TestVisionDataSynchronizerSync(TestCase):
             self.assertEqual(sync_log.exception_message, exception_message)
         else:
             self.assertIn(sync_log.exception_message, ('', None))
-        # date_processed is a datetime; there's no way to know the exact microsecond it should contain. As long as
+        # date_processed is a datetime; there's no way to know the exact
+        # microsecond it should contain. As long as
         # it's within a few seconds of now, that's good enough.
         delta = django_now() - sync_log.date_processed
         self.assertLess(delta.seconds, 5)
@@ -351,7 +354,7 @@ class TestMultiModelDataSynchronizer(TestCase):
         self.synchronizer = self.synchronizer_class(business_area_code=test_business_area_code)
 
     def test_convert_records(self):
-        list_records = [1,2,3]
+        list_records = [1, 2, 3]
         self.assertEqual(list_records, self.synchronizer._convert_records(list_records))
         list_records_str = '[1, 2, 3]'
         self.assertEqual(list_records, self.synchronizer._convert_records(list_records_str))
@@ -396,7 +399,8 @@ class TestManualVisionSynchronizer(TestCase):
 
     def _setup_sync_mapping_v2(self):
         """set up partner model as callable of type types.FunctionType"""
-        def f_type(): pass
+        def f_type():
+            pass
 
         self._setup_sync()
 
