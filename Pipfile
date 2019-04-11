@@ -11,6 +11,7 @@ pytest-echo = "*"
 flake8 = "*"
 pytest-cov = "*"
 pytest-pythonpath = "*"
+isort = "*"
 
 [packages]
 requests = "*"
