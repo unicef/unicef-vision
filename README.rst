@@ -77,9 +77,9 @@ Links
 -----
 
 +--------------------+----------------+--------------+--------------------+
-| Stable             |                | |master-cov| |                    |
+| Stable             | |master-build| | |master-cov| |                    |
 +--------------------+----------------+--------------+--------------------+
-| Development        |                | |dev-cov|    |                    |
+| Development        | |dev-build|    | |dev-cov|    |                    |
 +--------------------+----------------+--------------+--------------------+
 | Source Code        |https://github.com/unicef/unicef-vision          |
 +--------------------+----------------+-----------------------------------+
@@ -87,12 +87,18 @@ Links
 +--------------------+----------------+-----------------------------------+
 
 
-.. |master-cov| image:: https://circleci.com/gh/unicef/unicef-vision/tree/master.svg?style=svg
-                    :target: https://circleci.com/gh/unicef/unicef-vision/tree/master
+.. |master-build| image:: https://secure.travis-ci.org/unicef/unicef-vision.svg?branch=master
+                    :target: http://travis-ci.org/unicef/unicef-vision/
 
+.. |master-cov| image:: https://codecov.io/gh/unicef/unicef-vision/branch/master/graph/badge.svg
+                    :target: https://codecov.io/gh/unicef/unicef-vision
 
-.. |dev-cov| image:: https://circleci.com/gh/unicef/unicef-vision/tree/develop.svg?style=svg
-                    :target: https://circleci.com/gh/unicef/unicef-vision/tree/develop
+.. |dev-build| image:: https://secure.travis-ci.org/unicef/unicef-vision.svg?branch=develop
+                  :target: http://travis-ci.org/unicef/unicef-vision/
+
+.. |dev-cov| image:: https://codecov.io/gh/unicef/unicef-vision/branch/develop/graph/badge.svg
+                    :target: https://codecov.io/gh/unicef/unicef-vision
+
 
 
 Compatibility Matrix
