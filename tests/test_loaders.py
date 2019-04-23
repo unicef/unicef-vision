@@ -1,16 +1,12 @@
-import mock
 import json
 import os
+
+import mock
 from django.conf import settings
 from django.test import override_settings, TestCase
 
 from unicef_vision.exceptions import VisionException
-from unicef_vision.loaders import (
-    VISION_NO_DATA_MESSAGE,
-    VisionDataLoader,
-    FileDataLoader,
-    ManualDataLoader
-)
+from unicef_vision.loaders import FileDataLoader, ManualDataLoader, VISION_NO_DATA_MESSAGE, VisionDataLoader
 
 FAUX_VISION_URL = 'https://api.example.com/foo.svc/'
 FAUX_VISION_USER = 'jane_user'

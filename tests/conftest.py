@@ -1,5 +1,6 @@
-from demo import factories
 import pytest
+
+from demo import factories
 
 
 @pytest.fixture

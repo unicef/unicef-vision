@@ -29,34 +29,6 @@ def read(*files):
     return content
 
 
-class VerifyTagVersion(install):
-    """Verify that the git tag matches version"""
-
-    def run(self):
-        tag = os.getenv("CIRCLE_TAG")
-        if tag != VERSION:
-            info = "Git tag: {} does not match the version of this app: {}".format(
-                tag,
-                VERSION
-            )
-            sys.exit(info)
-
-
-class PyTest(TestCommand):
-    user_options = [('pytest-args=', 'a', "Arguments to pass to pytest")]
-
-    def initialize_options(self):
-        TestCommand.initialize_options(self)
-        self.pytest_args = ''
-
-    def run_tests(self):
-        import shlex
-        # import here, cause outside the eggs aren't loaded
-        import pytest
-        errno = pytest.main(shlex.split(self.pytest_args))
-        sys.exit(errno)
-
-
 setup(
     name=NAME,
     version=VERSION,
@@ -74,6 +46,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
     install_requires=[
         'Django',
@@ -96,7 +69,4 @@ setup(
     package_dir={'': 'src'},
     packages=find_packages('src'),
     include_package_data=True,
-    cmdclass={"verify": VerifyTagVersion,
-              'test': PyTest,
-              }
 )

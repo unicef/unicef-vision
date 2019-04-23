@@ -10,7 +10,6 @@ help:
 	@echo '   make coverage                    run coverage                       '
 	@echo '   make test                        run tests                          '
 	@echo '   make develop                     update develop environment         '
-	@echo '   make requirements                generate requirements files from Pipfile'
 	@echo '                                                                       '
 
 
@@ -27,7 +26,7 @@ help:
 
 develop: .init-db
 	@${MAKE} clean
-	pipenv install -d
+	pipenv install -d .[test] --skip-lock
 
 
 clean:
@@ -45,17 +44,12 @@ fullclean:
 
 
 lint:
-	flake8 src/ tests/; exit 0;
-	isort src/ tests/ --check-only -rc; exit 0;
-
-
-requirements:
-	pipenv lock -r > src/requirements/install.pip
-	pipenv lock -r -d > src/requirements/testing.pip
+	-flake8 src/ tests/
+	-isort src/ tests/ --check-only -rc
 
 
 test:
-	pytest tests/ src/ \
+	pipenv run pytest tests/ src/ \
             --cov=unicef_vision \
             --cov-config=tests/.coveragerc \
             --cov-report=html \
