@@ -65,37 +65,45 @@ Testing is important and tests are located in `tests/` directory and can be run 
 Coverage report is viewable in `build/coverage` directory, and can be generated with;
 
 
-Project Links
-~~~~~~~~~~~~~
-
- - Continuous Integration - https://circleci.com/gh/unicef/unicef-vision/tree/develop
- - Source Code - https://github.com/unicef/unicef-vision
-
-
 
 Links
------
+~~~~~
 
 +--------------------+----------------+--------------+--------------------+
-| Stable             |                | |master-cov| |                    |
+| Stable             | |master-build| | |master-cov| |                    |
 +--------------------+----------------+--------------+--------------------+
-| Development        |                | |dev-cov|    |                    |
+| Development        | |dev-build|    | |dev-cov|    |                    |
 +--------------------+----------------+--------------+--------------------+
-| Source Code        |https://github.com/unicef/unicef-vision          |
+| Source Code        |https://github.com/unicef/unicef-vision             |
 +--------------------+----------------+-----------------------------------+
-| Issue tracker      |https://github.com/unicef/unicef-vision/issues   |
+| Issue tracker      |https://github.com/unicef/unicef-vision/issues      |
 +--------------------+----------------+-----------------------------------+
 
 
-.. |master-cov| image:: https://circleci.com/gh/unicef/unicef-vision/tree/master.svg?style=svg
-                    :target: https://circleci.com/gh/unicef/unicef-vision/tree/master
+.. |master-build| image:: https://secure.travis-ci.org/unicef/unicef-vision.svg?branch=master
+                    :target: http://travis-ci.org/unicef/unicef-vision/
 
+.. |master-cov| image:: https://codecov.io/gh/unicef/unicef-vision/branch/master/graph/badge.svg
+                    :target: https://codecov.io/gh/unicef/unicef-vision
 
-.. |dev-cov| image:: https://circleci.com/gh/unicef/unicef-vision/tree/develop.svg?style=svg
-                    :target: https://circleci.com/gh/unicef/unicef-vision/tree/develop
+.. |dev-build| image:: https://secure.travis-ci.org/unicef/unicef-vision.svg?branch=develop
+                  :target: http://travis-ci.org/unicef/unicef-vision/
+
+.. |dev-cov| image:: https://codecov.io/gh/unicef/unicef-vision/branch/develop/graph/badge.svg
+                    :target: https://codecov.io/gh/unicef/unicef-vision
+
 
 
 Compatibility Matrix
 --------------------
+
+Stable
+~~~~~~
+
+.. image:: https://travis-matrix-badges.herokuapp.com/repos/unicef/unicef-vision/branches/master
+
+
+Develop
+~~~~~~~
 
 .. image:: https://travis-matrix-badges.herokuapp.com/repos/unicef/unicef-vision/branches/develop
