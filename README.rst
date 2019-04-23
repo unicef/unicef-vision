@@ -97,4 +97,13 @@ Links
 Compatibility Matrix
 --------------------
 
+Stable
+~~~~~~
+
+.. image:: https://travis-matrix-badges.herokuapp.com/repos/unicef/unicef-vision/branches/master
+
+
+Develop
+~~~~~~~
+
 .. image:: https://travis-matrix-badges.herokuapp.com/repos/unicef/unicef-vision/branches/develop
