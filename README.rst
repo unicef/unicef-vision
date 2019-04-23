@@ -65,25 +65,18 @@ Testing is important and tests are located in `tests/` directory and can be run 
 Coverage report is viewable in `build/coverage` directory, and can be generated with;
 
 
-Project Links
-~~~~~~~~~~~~~
-
- - Continuous Integration - https://circleci.com/gh/unicef/unicef-vision/tree/develop
- - Source Code - https://github.com/unicef/unicef-vision
-
-
 
 Links
------
+~~~~~
 
 +--------------------+----------------+--------------+--------------------+
 | Stable             | |master-build| | |master-cov| |                    |
 +--------------------+----------------+--------------+--------------------+
 | Development        | |dev-build|    | |dev-cov|    |                    |
 +--------------------+----------------+--------------+--------------------+
-| Source Code        |https://github.com/unicef/unicef-vision          |
+| Source Code        |https://github.com/unicef/unicef-vision             |
 +--------------------+----------------+-----------------------------------+
-| Issue tracker      |https://github.com/unicef/unicef-vision/issues   |
+| Issue tracker      |https://github.com/unicef/unicef-vision/issues      |
 +--------------------+----------------+-----------------------------------+
 
 
