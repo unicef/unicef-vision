@@ -49,7 +49,7 @@ lint:
 
 
 test:
-	pipenv run pytest tests/ src/ \
+	pytest tests/ src/ \
             --cov=unicef_vision \
             --cov-config=tests/.coveragerc \
             --cov-report=html \

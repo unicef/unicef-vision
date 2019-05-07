@@ -4,11 +4,8 @@ import ast
 import codecs
 import os
 import re
-import sys
 
 from setuptools import find_packages, setup
-from setuptools.command.install import install
-from setuptools.command.test import test as TestCommand
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 init = os.path.join(HERE, "src", "unicef_vision", "__init__.py")
@@ -47,6 +44,9 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Framework :: Django',
+        'Framework :: Django :: 2.1',
+        'Framework :: Django :: 2.2',
     ],
     install_requires=[
         'Django',
