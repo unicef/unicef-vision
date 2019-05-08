@@ -26,7 +26,7 @@ help:
 
 develop: .init-db
 	@${MAKE} clean
-	pipenv install -d .[test] --skip-lock
+	pip install .[test]
 
 
 clean:
