@@ -1,22 +1,16 @@
-import copy
-import json
-import mock
-import os
-import types
-
-from datetime import datetime
 from collections import OrderedDict
+
+import mock
 from django.db.models import NOT_PROVIDED
-from django.conf import settings
-from django.test import override_settings, TestCase
+from django.test import TestCase
 from django.utils.timezone import now as django_now
 
 from unicef_vision.exceptions import VisionException
 from unicef_vision.synchronizers import (
-    VisionDataSynchronizer,
     FileDataSynchronizer,
+    ManualVisionSynchronizer,
     MultiModelDataSynchronizer,
-    ManualVisionSynchronizer
+    VisionDataSynchronizer,
 )
 from unicef_vision.vision.models import VisionLog
 
@@ -52,6 +46,7 @@ class TestVisionDataSynchronizerInit(TestCase):
 
     def test_instantiation_no_endpoint(self):
         """Ensure I can't create a synchronizer without specifying an endpoint"""
+
         class _MyBadSynchronizer(self.synchronizer_class):
             """Synchronizer class that doesn't set self.ENDPOINT"""
             ENDPOINT = None
@@ -73,19 +68,19 @@ class TestVisionDataSynchronizerInit(TestCase):
         # Ensure msgs are logged
         self.assertEqual(mock_logger_info.call_count, 2)
         expected_msg = 'Synchronizer is _MySynchronizer'
-        self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg,))
         self.assertEqual(mock_logger_info.call_args_list[0][1], {})
 
         expected_msg = 'business_area_code is ' + test_business_area_code
-        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg,))
         self.assertEqual(mock_logger_info.call_args_list[1][1], {})
 
 
 class TestVisionDataSynchronizerSync(TestCase):
     """Exercise the sync() method of VisionDataSynchronizer class"""
 
-    def _assertVisionLogFundamentals(self, total_records, total_processed, details='', exception_message='',
-                                         successful=True):
+    def _assertVisionLogFundamentals(self, total_records, total_processed, details='',
+                                     exception_message='', successful=True):
         """Assert common properties of the VisionLog record that should have been created during a test. Populate
         the method parameters with what you expect to see in the VisionLog record.
         """
@@ -163,21 +158,21 @@ class TestVisionDataSynchronizerSync(TestCase):
         self.assertEqual(mock_loader.get.call_args[1], {})
 
         self.assertEqual(mock_convert_records.call_count, 1)
-        self.assertEqual(mock_convert_records.call_args[0], (vision_records, ))
+        self.assertEqual(mock_convert_records.call_args[0], (vision_records,))
         self.assertEqual(mock_convert_records.call_args[1], {})
 
         self.assertEqual(mock_save_records.call_count, 1)
-        self.assertEqual(mock_save_records.call_args[0], (converted_records, ))
+        self.assertEqual(mock_save_records.call_args[0], (converted_records,))
         self.assertEqual(mock_save_records.call_args[1], {})
 
         # The first two calls to logger.info()  are part of the instantiation of VisionDataLoader so I don't need to
         # test them here.
         self.assertEqual(mock_logger_info.call_count, 4)
         expected_msg = '{} records returned from get'.format(len(vision_records))
-        self.assertEqual(mock_logger_info.call_args_list[2][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[2][0], (expected_msg,))
         self.assertEqual(mock_logger_info.call_args_list[2][1], {})
         expected_msg = '{} records returned from conversion'.format(len(converted_records))
-        self.assertEqual(mock_logger_info.call_args_list[3][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[3][0], (expected_msg,))
         self.assertEqual(mock_logger_info.call_args_list[3][1], {})
 
         self._assertVisionLogFundamentals(len(converted_records), 99)
@@ -228,6 +223,7 @@ class TestVisionDataSynchronizerSync(TestCase):
 
     def test_sync_passes_loader_kwargs(self):
         """Test that LOADER_EXTRA_KWARGS on the synchronizer are passed to the loader."""
+
         class _MyFancySynchronizer(self.synchronizer_class):
             """Synchronizer class that uses LOADER_EXTRA_KWARGS"""
             LOADER_EXTRA_KWARGS = ['FROBNICATE', 'POTRZEBIE']
@@ -290,7 +286,7 @@ class TestVisionDataSynchronizerSync(TestCase):
         # test them here.
         self.assertEqual(mock_logger_info.call_count, 3)
         expected_msg = 'sync'
-        self.assertEqual(mock_logger_info.call_args_list[2][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[2][0], (expected_msg,))
         self.assertEqual(mock_logger_info.call_args_list[2][1], {'exc_info': True})
 
         self._assertVisionLogFundamentals(0, 0, exception_message='Wrong!', successful=False)
@@ -333,11 +329,11 @@ class TestFileDataSynchronizer(TestCase):
         # Ensure msgs are logged
         self.assertEqual(mock_logger_info.call_count, 2)
         expected_msg = 'Synchronizer is FileDataSynchronizer'
-        self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg,))
         self.assertEqual(mock_logger_info.call_args_list[0][1], {})
 
         expected_msg = 'business_area_code is ' + test_business_area_code
-        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg, ))
+        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg,))
         self.assertEqual(mock_logger_info.call_args_list[1][1], {})
 
 
@@ -351,7 +347,7 @@ class TestMultiModelDataSynchronizer(TestCase):
         self.synchronizer = self.synchronizer_class(business_area_code=test_business_area_code)
 
     def test_convert_records(self):
-        list_records = [1,2,3]
+        list_records = [1, 2, 3]
         self.assertEqual(list_records, self.synchronizer._convert_records(list_records))
         list_records_str = '[1, 2, 3]'
         self.assertEqual(list_records, self.synchronizer._convert_records(list_records_str))
@@ -396,7 +392,9 @@ class TestManualVisionSynchronizer(TestCase):
 
     def _setup_sync_mapping_v2(self):
         """set up partner model as callable of type types.FunctionType"""
-        def f_type(): pass
+
+        def f_type():
+            pass
 
         self._setup_sync()
 

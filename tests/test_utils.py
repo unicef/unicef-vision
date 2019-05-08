@@ -1,8 +1,8 @@
 import datetime
 import json
-import mock
 
-from django.test import SimpleTestCase, override_settings
+import mock
+from django.test import override_settings, SimpleTestCase
 
 from unicef_vision import utils
 from unicef_vision.loaders import VISION_NO_DATA_MESSAGE
