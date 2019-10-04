@@ -42,7 +42,7 @@ class DataSynchronizer:
         return {}
 
     def __init__(self, business_area_code=None, *args, **kwargs) -> None:
-        if not business_area_code:
+        if not (business_area_code or self.GLOBAL_CALL):
             raise VisionException('business_area_code is required')
         self.business_area_code = business_area_code
         logger.info('Synchronizer is {}'.format(self.__class__.__name__))

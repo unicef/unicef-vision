@@ -69,7 +69,7 @@ class ManualDataLoader(VisionDataLoader):
 class FileDataLoader:
     """Loader to read json file instead of REST API"""
 
-    def __init__(self, filename):
+    def __init__(self, filename, *args, **kwargs):
         self.filename = filename
 
     def get(self):
