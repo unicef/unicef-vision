@@ -95,4 +95,7 @@ STATIC_URL = '/static/'
 
 MEDIA_ROOT = '/tmp/'
 VISION_URL = 'https://api.example.com'
+VISION_USER = 'user'
+VISION_PASSWORD = 'pass'
+
 VISION_LOGGER_MODEL = 'vision.VisionLog'

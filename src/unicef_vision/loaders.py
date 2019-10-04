@@ -8,31 +8,39 @@ from unicef_vision.exceptions import VisionException
 
 logger = logging.getLogger(__name__)
 
-# VISION_NO_DATA_MESSAGE is what the remote vision system returns when it has no data
 VISION_NO_DATA_MESSAGE = 'No Data Available'
 
 
 class VisionDataLoader:
     """Base class for Data Loading"""
-    URL = settings.VISION_URL
 
-    def __init__(self, business_area_code=None, endpoint=None):
-        if endpoint is None:
-            raise VisionException('You must set the ENDPOINT name')
+    def __init__(self, endpoint, business_area_code=None, **kwargs):
 
+        self.URL = kwargs.get('url', settings.VISION_URL)
+        self.username = kwargs.get('username', settings.VISION_USER)
+        self.password = kwargs.get('password', settings.VISION_PASSWORD)
+        self.set_headers(kwargs.get('headers', ()))
+        self.set_url(endpoint, business_area_code)
+
+    def set_url(self, endpoint, detail):
         separator = '' if self.URL.endswith('/') else '/'
 
         self.url = '{}{}{}'.format(self.URL, separator, endpoint)
-        if business_area_code:
-            self.url += '/{}'.format(business_area_code)
-
+        if detail:
+            self.url += '/{}'.format(detail)
         logger.info('About to get data from {}'.format(self.url))
+
+    def set_headers(self, headers):
+        self.headers = {'Content-Type': 'application/json'}
+        if headers:
+            for header_name, header_value in headers:
+                self.headers[header_name] = header_value
 
     def get(self):
         response = requests.get(
             self.url,
-            headers={'Content-Type': 'application/json'},
-            auth=(settings.VISION_USER, settings.VISION_PASSWORD),
+            headers=self.headers,
+            auth=(self.username, self.password),
             verify=False
         )
 
@@ -53,17 +61,11 @@ class ManualDataLoader(VisionDataLoader):
     /endpoint/object_number else
     """
 
-    def __init__(self, business_area_code=None, endpoint=None, object_number=None):
-        if not object_number:
-            super().__init__(business_area_code=business_area_code, endpoint=endpoint)
-        else:
-            if endpoint is None:
-                raise VisionException('You must set the ENDPOINT name')
-            self.url = '{}/{}/{}'.format(
-                self.URL,
-                endpoint,
-                object_number
-            )
+    def __init__(self, endpoint, business_area_code=None, object_number=None, **kwargs):
+        super().__init__(endpoint, business_area_code, **kwargs)
+
+        if object_number:
+            self.set_url(endpoint, object_number)
 
 
 class FileDataLoader:

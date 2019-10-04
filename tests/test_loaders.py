@@ -33,19 +33,19 @@ class TestVisionDataLoader(TestCase):
 
     def test_instantiation_no_business_area_code(self):
         """Ensure I can create a loader without specifying a business_area_code"""
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
+        loader = VisionDataLoader('GetSomeStuff_JSON')
         self.assertEqual(loader.url, '{}/GetSomeStuff_JSON'.format(loader.URL))
 
     def test_instantiation_with_business_area_code(self):
         """Ensure I can create a loader that specifies a business_area_code"""
         test_business_area_code = 'ABC'
 
-        loader = VisionDataLoader(business_area_code=test_business_area_code, endpoint='GetSomeStuff_JSON')
+        loader = VisionDataLoader('GetSomeStuff_JSON', business_area_code=test_business_area_code)
         self.assertEqual(loader.url, '{}/GetSomeStuff_JSON/ABC'.format(loader.URL))
 
     def test_instantiation_url_construction(self):
         """Ensure loader URL is constructed correctly regardless of whether or not base URL ends with a slash"""
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
+        loader = VisionDataLoader('GetSomeStuff_JSON')
         self.assertEqual(loader.url, '{}/GetSomeStuff_JSON'.format(loader.URL))
 
     @override_settings(VISION_URL=FAUX_VISION_URL)
@@ -59,11 +59,34 @@ class TestVisionDataLoader(TestCase):
         mock_get_response.json = mock.Mock(return_value=[42])
         mock_requests.get = mock.Mock(return_value=mock_get_response)
 
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
+        loader = VisionDataLoader('GetSomeStuff_JSON')
         response = loader.get()
 
         self._assertGetFundamentals(loader.url, mock_requests, mock_get_response)
 
+        self.assertEqual(response, [42])
+
+    @override_settings(VISION_URL=FAUX_VISION_URL)
+    @override_settings(VISION_USER=FAUX_VISION_USER)
+    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
+    @mock.patch('unicef_vision.loaders.requests', spec=['get'])
+    def test_get_success_with_response_and_headers(self, mock_requests):
+        """Test loader.get() when the response is 200 OK and data is returned"""
+        mock_get_response = mock.Mock(spec=['status_code', 'json'])
+        mock_get_response.status_code = 200
+        mock_get_response.json = mock.Mock(return_value=[42])
+        mock_requests.get = mock.Mock(return_value=mock_get_response)
+
+        loader = VisionDataLoader('GetSomeStuff_JSON', headers=(('Test', 'Header'), ))
+
+        response = loader.get()
+
+        self.assertEqual(mock_requests.get.call_count, 1)
+        self.assertEqual(mock_requests.get.call_args[0], (loader.url, ))
+        self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json',
+                                                                      'Test': 'Header'},
+                                                          'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
+                                                          'verify': False})
         self.assertEqual(response, [42])
 
     @override_settings(VISION_URL=FAUX_VISION_URL)
@@ -77,7 +100,7 @@ class TestVisionDataLoader(TestCase):
         mock_get_response.json = mock.Mock(return_value=VISION_NO_DATA_MESSAGE)
         mock_requests.get = mock.Mock(return_value=mock_get_response)
 
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
+        loader = VisionDataLoader('GetSomeStuff_JSON')
         response = loader.get()
 
         self._assertGetFundamentals(loader.url, mock_requests, mock_get_response)
@@ -97,7 +120,7 @@ class TestVisionDataLoader(TestCase):
         mock_get_response.status_code = 401
         mock_requests.get = mock.Mock(return_value=mock_get_response)
 
-        loader = VisionDataLoader(endpoint='GetSomeStuff_JSON')
+        loader = VisionDataLoader('GetSomeStuff_JSON')
         with self.assertRaises(VisionException) as context_manager:
             loader.get()
 
@@ -113,22 +136,9 @@ class TestVisionDataLoader(TestCase):
 
 
 class TestManualDataLoader(TestCase):
-    def test_init_no_endpoint_no_object_number(self):
-        with self.assertRaisesRegex(
-                VisionException,
-                "You must set the ENDPOINT"
-        ):
-            ManualDataLoader()
-
-    def test_init_no_endpoint(self):
-        with self.assertRaisesRegex(
-                VisionException,
-                "You must set the ENDPOINT"
-        ):
-            ManualDataLoader(object_number="123")
 
     def test_init(self):
-        a = ManualDataLoader(endpoint="api", object_number="123")
+        a = ManualDataLoader("api", object_number="123")
         self.assertEqual(a.url, "{}/api/123".format(settings.VISION_URL))
 
 
