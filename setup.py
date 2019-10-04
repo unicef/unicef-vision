@@ -32,7 +32,7 @@ setup(
     author='UNICEF',
     author_email='rapidpro@unicef.org',
     description='',
-    long_description=read('README.rst'),
+    # long_description=read('README.rst'),
     platforms=['any'],
     license='Apache 2 License',
     classifiers=[
