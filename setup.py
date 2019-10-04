@@ -1,14 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import ast
 import codecs
 import os
 import re
-import sys
 
 from setuptools import find_packages, setup
-from setuptools.command.install import install
-from setuptools.command.test import test as TestCommand
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 init = os.path.join(HERE, "src", "unicef_vision", "__init__.py")
@@ -29,34 +25,6 @@ def read(*files):
     return content
 
 
-class VerifyTagVersion(install):
-    """Verify that the git tag matches version"""
-
-    def run(self):
-        tag = os.getenv("CIRCLE_TAG")
-        if tag != VERSION:
-            info = "Git tag: {} does not match the version of this app: {}".format(
-                tag,
-                VERSION
-            )
-            sys.exit(info)
-
-
-class PyTest(TestCommand):
-    user_options = [('pytest-args=', 'a', "Arguments to pass to pytest")]
-
-    def initialize_options(self):
-        TestCommand.initialize_options(self)
-        self.pytest_args = ''
-
-    def run_tests(self):
-        import shlex
-        # import here, cause outside the eggs aren't loaded
-        import pytest
-        errno = pytest.main(shlex.split(self.pytest_args))
-        sys.exit(errno)
-
-
 setup(
     name=NAME,
     version=VERSION,
@@ -74,6 +42,10 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Framework :: Django',
+        'Framework :: Django :: 2.1',
+        'Framework :: Django :: 2.2',
     ],
     install_requires=[
         'Django',
@@ -96,7 +68,4 @@ setup(
     package_dir={'': 'src'},
     packages=find_packages('src'),
     include_package_data=True,
-    cmdclass={"verify": VerifyTagVersion,
-              'test': PyTest,
-              }
 )

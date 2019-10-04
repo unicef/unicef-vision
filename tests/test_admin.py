@@ -1,8 +1,9 @@
-from django.test import SimpleTestCase
 from django.contrib.admin.sites import AdminSite
+from django.test import SimpleTestCase
 
 from unicef_vision import admin
 from unicef_vision.vision.models import VisionLog
+
 
 class TestVisionAdmin(SimpleTestCase):
     def setUp(self):
