@@ -1,14 +1,15 @@
-Release 0.3
+Release 0.3 (in development)
 ----------------
 * added support for python 3.8
+* dropped support for python 3.6
 
 
 Release 0.2
 ----------------
-* Customizable headers
-* Customizable user and password for synchronized
+* customizable headers
+* customizable user and password for synchronized
 
 
 Release 0.1
 ----------------
-* Initial release
+* initial release
