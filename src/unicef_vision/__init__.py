@@ -1,2 +1,2 @@
 NAME = 'unicef-vision'
-VERSION = __version__ = "0.2"
+VERSION = __version__ = "0.3"
