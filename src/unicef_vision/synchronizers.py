@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 
 from django.db.models import NOT_PROVIDED
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 
 from unicef_vision.exceptions import VisionException
 from unicef_vision.loaders import FileDataLoader, ManualDataLoader, VisionDataLoader
@@ -92,9 +92,9 @@ class DataSynchronizer:
             totals = self._save_records(converted_records)
         except Exception as e:
             logger.info('sync', exc_info=True)
-            self.log.exception_message = force_text(e)
+            self.log.exception_message = force_str(e)
             traceback = sys.exc_info()[2]
-            raise VisionException(force_text(e)).with_traceback(traceback)
+            raise VisionException(force_str(e)).with_traceback(traceback)
         else:
             if isinstance(totals, dict):
                 self.log.total_processed = totals.get('processed', 0)

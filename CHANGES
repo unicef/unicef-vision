@@ -1,3 +1,8 @@
+Release 0.4 (in dev)
+* added support for django 3.0
+----------------
+
+
 Release 0.3
 ----------------
 * added support for python 3.8
