@@ -1,4 +1,4 @@
-import json
+import datetime
 import logging
 import sys
 import types
@@ -10,7 +10,7 @@ from django.utils.encoding import force_str
 
 from unicef_vision.exceptions import VisionException
 from unicef_vision.loaders import FileDataLoader, ManualDataLoader, VisionDataLoader
-from unicef_vision.utils import get_vision_logger_domain_model, wcf_json_date_as_datetime
+from unicef_vision.utils import get_vision_logger_domain_model
 
 logger = logging.getLogger(__name__)
 
@@ -153,14 +153,14 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
         if isinstance(records, list):
             return records
         try:
-            return json.loads(records)
-        except ValueError:
+            return records["ROWSET"]["ROW"]
+        except (TypeError, ValueError):
             return []
 
     def _get_field_value(self, field_name, field_json_code, json_item, model):
         if field_json_code in self.DATE_FIELDS:
             # parsing field as date
-            return wcf_json_date_as_datetime(json_item[field_json_code])
+            return datetime.datetime.strptime(json_item[field_json_code], '%d-%b-%y').date()
         elif field_name in self.MODEL_MAPPING.keys():
             # this is related model, so we need to fetch somehow related object.
             related_model = self.MODEL_MAPPING[field_name]
@@ -252,5 +252,4 @@ class ManualVisionSynchronizer(MultiModelDataSynchronizer):
                 raise VisionException('You must set the ENDPOINT name')
 
             self.business_area_code = business_area_code
-
             logger.info('Business area code is {}'.format(business_area_code))
