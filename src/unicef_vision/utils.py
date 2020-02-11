@@ -5,6 +5,8 @@ import requests
 from django.apps import apps
 from django.conf import settings
 
+from unicef_vision.settings import TIMEOUT
+
 
 def get_vision_logger_domain_model():
     get_model = apps.get_model
@@ -21,7 +23,7 @@ def get_data_from_insight(endpoint, data={}):
         url,
         headers={'Content-Type': 'application/json'},
         auth=(settings.VISION_USER, settings.VISION_PASSWORD),
-        verify=False
+        timeout=TIMEOUT
     )
     if response.status_code != 200:
         return False, 'Loading data from Vision Failed, status {}'.format(response.status_code)

@@ -8,6 +8,8 @@ import requests
 from django.conf import settings
 from requests.auth import HTTPDigestAuth
 
+from unicef_vision.settings import TIMEOUT
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +41,7 @@ class VisionAPIClient:
         response = requests.get(
             self.build_path(path),
             auth=getattr(self, 'auth', ()),
+            timeout=TIMEOUT
         )
         return response
 
@@ -58,6 +61,7 @@ class VisionAPIClient:
             headers={'cache-control': 'application/json'},
             auth=getattr(self, 'auth', ()),
             data=payload,
+            timeout=TIMEOUT
         )
         return response
 

@@ -5,6 +5,7 @@ import requests
 from django.conf import settings
 
 from unicef_vision.exceptions import VisionException
+from unicef_vision.settings import TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class VisionDataLoader:
             self.url,
             headers=self.headers,
             auth=(self.username, self.password),
-            verify=False
+            timeout=TIMEOUT
         )
 
         if response.status_code != 200:
