@@ -25,7 +25,7 @@ class TestVisionDataLoader(TestCase):
         self.assertEqual(mock_requests.get.call_args[0], (url, ))
         self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json'},
                                                           'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
-                                                          'verify': False})
+                                                          'timeout': 400})
         # Ensure response.json() was called as expected
         self.assertEqual(mock_get_response.json.call_count, 1)
         self.assertEqual(mock_get_response.json.call_args[0], tuple())
@@ -86,7 +86,7 @@ class TestVisionDataLoader(TestCase):
         self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json',
                                                                       'Test': 'Header'},
                                                           'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
-                                                          'verify': False})
+                                                          'timeout': 400})
         self.assertEqual(response, [42])
 
     @override_settings(VISION_URL=FAUX_VISION_URL)
@@ -132,7 +132,7 @@ class TestVisionDataLoader(TestCase):
         self.assertEqual(mock_requests.get.call_args[0], (loader.url, ))
         self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json'},
                                                           'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
-                                                          'verify': False})
+                                                          'timeout': 400})
 
 
 class TestManualDataLoader(TestCase):

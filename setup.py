@@ -32,7 +32,7 @@ setup(
     author='UNICEF',
     author_email='rapidpro@unicef.org',
     description='',
-    long_description=read('README.rst'),
+    # long_description=read('README.rst'),
     platforms=['any'],
     license='Apache 2 License',
     classifiers=[
@@ -41,10 +41,9 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Framework :: Django',
-        'Framework :: Django :: 2.1',
         'Framework :: Django :: 2.2',
     ],
     install_requires=[
