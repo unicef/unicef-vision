@@ -21,8 +21,9 @@ def get_data_from_insight(endpoint, data={}):
 
     response = requests.get(
         url,
-        headers={'Content-Type': 'application/json'},
-        auth=(settings.VISION_USER, settings.VISION_PASSWORD),
+        headers={'Accept': 'application/json',
+                 'Ocp-Apim-Subscription-Key': settings.INSIGHT_SUB_KEY, },
+        # auth=(settings.VISION_USER, settings.VISION_PASSWORD),
         timeout=TIMEOUT
     )
     if response.status_code != 200:

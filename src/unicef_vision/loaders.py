@@ -28,7 +28,7 @@ class VisionDataLoader:
 
         self.url = '{}{}{}'.format(self.URL, separator, endpoint)
         if detail:
-            self.url += '/{}'.format(detail)
+            self.url += '/?businessarea={}'.format(detail)
         logger.info('About to get data from {}'.format(self.url))
 
     def set_headers(self, headers):

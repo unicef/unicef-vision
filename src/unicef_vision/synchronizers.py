@@ -30,7 +30,7 @@ class DataSynchronizer:
     business_area_code = None
 
     @abstractmethod
-    def _convert_records(self, records):    # pragma: no cover
+    def _convert_records(self, records):    # pragma: no  cover
         pass
 
     @abstractmethod
