@@ -37,3 +37,10 @@ def get_data_from_insight(endpoint, data=None):
     except ValueError:
         return False, 'Loading data from Vision Failed, no valid response returned for data: {}'.format(data)
     return True, result
+
+
+def comp_decimals(y, x):
+    def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
+        return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+
+    return isclose(float(x), float(y))

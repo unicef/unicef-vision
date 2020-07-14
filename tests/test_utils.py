@@ -47,3 +47,11 @@ class TestGetDataFromInsight(SimpleTestCase):
 
         self.assertTrue(status)
         self.assertEqual(response, res)
+
+
+class TestCompDecimals(SimpleTestCase):
+    def test_not_equal(self):
+        self.assertFalse(utils.comp_decimals(0.2, 0.3))
+
+    def test_equal(self):
+        self.assertTrue(utils.comp_decimals(0.2, 0.2))
