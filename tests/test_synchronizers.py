@@ -14,9 +14,7 @@ from unicef_vision.synchronizers import (
 )
 from unicef_vision.vision.models import VisionLog
 
-FAUX_VISION_URL = 'https://api.example.com/foo.svc/'
-FAUX_VISION_USER = 'jane_user'
-FAUX_VISION_PASSWORD = 'password123'
+FAUX_INSIGHT_URL = 'https://api.example.com/foo.svc/'
 
 
 class _MySynchronizer(VisionDataSynchronizer):
@@ -349,7 +347,7 @@ class TestMultiModelDataSynchronizer(TestCase):
     def test_convert_records(self):
         list_records = [1, 2, 3]
         self.assertEqual(list_records, self.synchronizer._convert_records(list_records))
-        list_records_str = '[1, 2, 3]'
+        list_records_str = {"ROWSET": {"ROW": [1, 2, 3]}}
         self.assertEqual(list_records, self.synchronizer._convert_records(list_records_str))
         self.assertListEqual([], self.synchronizer._convert_records('abcde'))
 
