@@ -38,14 +38,14 @@ class DataSynchronizer:
     def _save_records(self, records):   # pragma: no cover
         pass
 
-    def set_kwargs(self, *args, **kwargs):
+    def set_kwargs(self, **kwargs):
         return {key: value for key, value in kwargs.items()}
 
     def __init__(self, detail=None, business_area_code=None, *args, **kwargs) -> None:
         self.detail = detail
         self.business_area_code = business_area_code
         logger.info('Synchronizer is {} - {} {}'.format(self.__class__.__name__, self.detail, self.business_area_code))
-        self.kwargs = self.set_kwargs(*args, **kwargs)
+        self.kwargs = self.set_kwargs(**kwargs)
 
     def _filter_records(self, records):
         def is_valid_record(record):
@@ -114,8 +114,8 @@ class VisionDataSynchronizer(DataSynchronizer):
             raise VisionException('You must set the ENDPOINT name')
         super().__init__(detail, business_area_code, *args, **kwargs)
 
-    def set_kwargs(self, *args, **kwargs):
-        kwargs = super().set_kwargs(*args, **kwargs)
+    def set_kwargs(self, **kwargs):
+        kwargs = super().set_kwargs(**kwargs)
         kwargs['endpoint'] = self.ENDPOINT
         if self.detail:
             kwargs['detail'] = self.detail
@@ -136,8 +136,8 @@ class FileDataSynchronizer(DataSynchronizer):
         self.filename = filename
         super().__init__(business_area_code, *args, **kwargs)
 
-    def set_kwargs(self, *args, **kwargs):
-        kwargs = super().set_kwargs(*args, **kwargs)
+    def set_kwargs(self, **kwargs):
+        kwargs = super().set_kwargs(**kwargs)
         kwargs['filename'] = self.filename
         return kwargs
 
