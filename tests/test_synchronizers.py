@@ -6,17 +6,10 @@ from django.test import TestCase
 from django.utils.timezone import now as django_now
 
 from unicef_vision.exceptions import VisionException
-from unicef_vision.synchronizers import (
-    FileDataSynchronizer,
-    ManualVisionSynchronizer,
-    MultiModelDataSynchronizer,
-    VisionDataSynchronizer,
-)
+from unicef_vision.synchronizers import FileDataSynchronizer, MultiModelDataSynchronizer, VisionDataSynchronizer
 from unicef_vision.vision.models import VisionLog
 
-FAUX_VISION_URL = 'https://api.example.com/foo.svc/'
-FAUX_VISION_USER = 'jane_user'
-FAUX_VISION_PASSWORD = 'password123'
+FAUX_INSIGHT_URL = 'https://api.example.com/foo.svc/'
 
 
 class _MySynchronizer(VisionDataSynchronizer):
@@ -66,14 +59,10 @@ class TestVisionDataSynchronizerInit(TestCase):
         self.synchronizer_class(business_area_code=test_business_area_code)
 
         # Ensure msgs are logged
-        self.assertEqual(mock_logger_info.call_count, 2)
-        expected_msg = 'Synchronizer is _MySynchronizer'
+        self.assertEqual(mock_logger_info.call_count, 1)
+        expected_msg = 'Synchronizer is _MySynchronizer - None ABC'
         self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg,))
         self.assertEqual(mock_logger_info.call_args_list[0][1], {})
-
-        expected_msg = 'business_area_code is ' + test_business_area_code
-        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg,))
-        self.assertEqual(mock_logger_info.call_args_list[1][1], {})
 
 
 class TestVisionDataSynchronizerSync(TestCase):
@@ -150,7 +139,7 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         self.assertEqual(MockLoaderClass.call_count, 1)
         self.assertEqual(MockLoaderClass.call_args[0], tuple())
-        self.assertEqual(MockLoaderClass.call_args[1], {'business_area_code': self.test_business_area_code,
+        self.assertEqual(MockLoaderClass.call_args[1], {'businessarea': self.test_business_area_code,
                                                         'endpoint': 'GetSomeStuff_JSON'})
 
         self.assertEqual(mock_loader.get.call_count, 1)
@@ -167,13 +156,13 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         # The first two calls to logger.info()  are part of the instantiation of VisionDataLoader so I don't need to
         # test them here.
-        self.assertEqual(mock_logger_info.call_count, 4)
+        self.assertEqual(mock_logger_info.call_count, 3)
         expected_msg = '{} records returned from get'.format(len(vision_records))
+        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg,))
+        self.assertEqual(mock_logger_info.call_args_list[1][1], {})
+        expected_msg = '{} records returned from conversion'.format(len(converted_records))
         self.assertEqual(mock_logger_info.call_args_list[2][0], (expected_msg,))
         self.assertEqual(mock_logger_info.call_args_list[2][1], {})
-        expected_msg = '{} records returned from conversion'.format(len(converted_records))
-        self.assertEqual(mock_logger_info.call_args_list[3][0], (expected_msg,))
-        self.assertEqual(mock_logger_info.call_args_list[3][1], {})
 
         self._assertVisionLogFundamentals(len(converted_records), 99)
 
@@ -226,9 +215,6 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         class _MyFancySynchronizer(self.synchronizer_class):
             """Synchronizer class that uses LOADER_EXTRA_KWARGS"""
-            LOADER_EXTRA_KWARGS = ['FROBNICATE', 'POTRZEBIE']
-            FROBNICATE = True
-            POTRZEBIE = 2.2
 
             def _convert_records(self, records):
                 return []
@@ -236,7 +222,9 @@ class TestVisionDataSynchronizerSync(TestCase):
             def _save_records(self, records):
                 return 0
 
-        synchronizer = _MyFancySynchronizer(business_area_code=self.test_business_area_code)
+        synchronizer = _MyFancySynchronizer(business_area_code=self.test_business_area_code,
+                                            FROBNICATE=True,
+                                            POTRZEBIE=2.2)
 
         mock_loader = mock.Mock()
         mock_loader.get.return_value = [42, 43, 44]
@@ -249,7 +237,7 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         self.assertEqual(MockLoaderClass.call_count, 1)
         self.assertEqual(MockLoaderClass.call_args[0], tuple())
-        self.assertEqual(MockLoaderClass.call_args[1], {'business_area_code': self.test_business_area_code,
+        self.assertEqual(MockLoaderClass.call_args[1], {'businessarea': self.test_business_area_code,
                                                         'endpoint': 'GetSomeStuff_JSON',
                                                         'FROBNICATE': True,
                                                         'POTRZEBIE': 2.2})
@@ -284,10 +272,10 @@ class TestVisionDataSynchronizerSync(TestCase):
 
         # The first two calls to logger.info()  are part of the instantiation of VisionDataLoader so I don't need to
         # test them here.
-        self.assertEqual(mock_logger_info.call_count, 3)
+        self.assertEqual(mock_logger_info.call_count, 2)
         expected_msg = 'sync'
-        self.assertEqual(mock_logger_info.call_args_list[2][0], (expected_msg,))
-        self.assertEqual(mock_logger_info.call_args_list[2][1], {'exc_info': True})
+        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg,))
+        self.assertEqual(mock_logger_info.call_args_list[1][1], {'exc_info': True})
 
         self._assertVisionLogFundamentals(0, 0, exception_message='Wrong!', successful=False)
 
@@ -307,7 +295,7 @@ class TestFileDataSynchronizer(TestCase):
         with self.assertRaises(VisionException) as context_manager:
             self.synchronizer_class()
 
-        self.assertEqual('business_area_code is required', str(context_manager.exception))
+        self.assertEqual('You need provide the path to the file', str(context_manager.exception))
 
     def test_instantiation_no_filename(self):
         """Ensure I can't create a synchronizer without specifying a filename"""
@@ -327,14 +315,10 @@ class TestFileDataSynchronizer(TestCase):
         self.synchronizer_class(business_area_code=test_business_area_code, filename=test_filename)
 
         # Ensure msgs are logged
-        self.assertEqual(mock_logger_info.call_count, 2)
-        expected_msg = 'Synchronizer is FileDataSynchronizer'
+        self.assertEqual(mock_logger_info.call_count, 1)
+        expected_msg = 'Synchronizer is FileDataSynchronizer - ABC None'
         self.assertEqual(mock_logger_info.call_args_list[0][0], (expected_msg,))
         self.assertEqual(mock_logger_info.call_args_list[0][1], {})
-
-        expected_msg = 'business_area_code is ' + test_business_area_code
-        self.assertEqual(mock_logger_info.call_args_list[1][0], (expected_msg,))
-        self.assertEqual(mock_logger_info.call_args_list[1][1], {})
 
 
 class TestMultiModelDataSynchronizer(TestCase):
@@ -349,17 +333,9 @@ class TestMultiModelDataSynchronizer(TestCase):
     def test_convert_records(self):
         list_records = [1, 2, 3]
         self.assertEqual(list_records, self.synchronizer._convert_records(list_records))
-        list_records_str = '[1, 2, 3]'
+        list_records_str = {"ROWSET": {"ROW": [1, 2, 3]}}
         self.assertEqual(list_records, self.synchronizer._convert_records(list_records_str))
         self.assertListEqual([], self.synchronizer._convert_records('abcde'))
-
-
-class TestManualVisionSynchronizer(TestCase):
-    """Exercise initialization of ManualVisionSynchronizer class"""
-
-    def setUp(self):
-        self.synchronizer_class = ManualVisionSynchronizer
-        self.synchronizer_class.ENDPOINT = 'GetSomeStuff_JSON'
 
     def _setup_sync(self):
         """set up syncronyzer class defaults and mappings"""

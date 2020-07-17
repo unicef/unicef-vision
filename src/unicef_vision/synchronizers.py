@@ -1,4 +1,4 @@
-import json
+import datetime
 import logging
 import sys
 import types
@@ -6,11 +6,11 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 
 from django.db.models import NOT_PROVIDED
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 
 from unicef_vision.exceptions import VisionException
-from unicef_vision.loaders import FileDataLoader, ManualDataLoader, VisionDataLoader
-from unicef_vision.utils import get_vision_logger_domain_model, wcf_json_date_as_datetime
+from unicef_vision.loaders import FileDataLoader, VisionDataLoader
+from unicef_vision.utils import get_vision_logger_domain_model
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ class DataSynchronizer:
     GLOBAL_CALL = False
     LOADER_CLASS = None
     LOADER_EXTRA_KWARGS = []
+    detail = None
     business_area_code = None
 
     @abstractmethod
@@ -37,16 +38,14 @@ class DataSynchronizer:
     def _save_records(self, records):   # pragma: no cover
         pass
 
-    @abstractmethod
-    def _get_kwargs(self):  # pragma: no cover
-        return {}
+    def set_kwargs(self, **kwargs):
+        return {key: value for key, value in kwargs.items()}
 
-    def __init__(self, business_area_code=None, *args, **kwargs) -> None:
-        if not (business_area_code or self.GLOBAL_CALL):
-            raise VisionException('business_area_code is required')
+    def __init__(self, detail=None, business_area_code=None, *args, **kwargs) -> None:
+        self.detail = detail
         self.business_area_code = business_area_code
-        logger.info('Synchronizer is {}'.format(self.__class__.__name__))
-        logger.info('business_area_code is {}'.format(business_area_code))
+        logger.info('Synchronizer is {} - {} {}'.format(self.__class__.__name__, self.detail, self.business_area_code))
+        self.kwargs = self.set_kwargs(**kwargs)
 
     def _filter_records(self, records):
         def is_valid_record(record):
@@ -74,12 +73,7 @@ class DataSynchronizer:
         """
         self.log = get_vision_logger_domain_model()(**self.logger_parameters())
 
-        loader_kwargs = self._get_kwargs()
-        loader_kwargs.update({
-            kwarg_name: getattr(self, kwarg_name)
-            for kwarg_name in self.LOADER_EXTRA_KWARGS
-        })
-        data_getter = self.LOADER_CLASS(**loader_kwargs)
+        data_getter = self.LOADER_CLASS(**self.kwargs)
 
         try:
             original_records = data_getter.get()
@@ -92,9 +86,9 @@ class DataSynchronizer:
             totals = self._save_records(converted_records)
         except Exception as e:
             logger.info('sync', exc_info=True)
-            self.log.exception_message = force_text(e)
+            self.log.exception_message = force_str(e)
             traceback = sys.exc_info()[2]
-            raise VisionException(force_text(e)).with_traceback(traceback)
+            raise VisionException(force_str(e)).with_traceback(traceback)
         else:
             if isinstance(totals, dict):
                 self.log.total_processed = totals.get('processed', 0)
@@ -113,33 +107,39 @@ class VisionDataSynchronizer(DataSynchronizer):
     ENDPOINT = None
     LOADER_CLASS = VisionDataLoader
 
-    def __init__(self, business_area_code=None, *args, **kwargs) -> None:
-
-        super().__init__(business_area_code, *args, **kwargs)
-
+    def __init__(self, detail=None, business_area_code=None, *args, **kwargs) -> None:
+        if not (business_area_code or self.GLOBAL_CALL):
+            raise VisionException('business_area_code is required')
         if self.ENDPOINT is None:
             raise VisionException('You must set the ENDPOINT name')
+        super().__init__(detail, business_area_code, *args, **kwargs)
 
-    def _get_kwargs(self):
-        return {
-            'business_area_code': self.business_area_code,
-            'endpoint': self.ENDPOINT,
-        }
+    def set_kwargs(self, **kwargs):
+        kwargs = super().set_kwargs(**kwargs)
+        kwargs['endpoint'] = self.ENDPOINT
+        if self.detail:
+            kwargs['detail'] = self.detail
+        if self.business_area_code:
+            kwargs['businessarea'] = self.business_area_code
+        return kwargs
 
 
 class FileDataSynchronizer(DataSynchronizer):
     __metaclass__ = ABCMeta
 
     LOADER_CLASS = FileDataLoader
-    LOADER_EXTRA_KWARGS = ['filename', ]
 
     def __init__(self, business_area_code=None, *args, **kwargs):
-
-        super().__init__(business_area_code, *args, **kwargs)
         filename = kwargs.get('filename', None)
         if not filename:
             raise VisionException('You need provide the path to the file')
         self.filename = filename
+        super().__init__(business_area_code, *args, **kwargs)
+
+    def set_kwargs(self, **kwargs):
+        kwargs = super().set_kwargs(**kwargs)
+        kwargs['filename'] = self.filename
+        return kwargs
 
 
 class MultiModelDataSynchronizer(VisionDataSynchronizer):
@@ -153,14 +153,14 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
         if isinstance(records, list):
             return records
         try:
-            return json.loads(records)
-        except ValueError:
+            return records["ROWSET"]["ROW"]
+        except (TypeError, ValueError):
             return []
 
     def _get_field_value(self, field_name, field_json_code, json_item, model):
         if field_json_code in self.DATE_FIELDS:
             # parsing field as date
-            return wcf_json_date_as_datetime(json_item[field_json_code])
+            return datetime.datetime.strptime(json_item[field_json_code], '%d-%b-%y').date()
         elif field_name in self.MODEL_MAPPING.keys():
             # this is related model, so we need to fetch somehow related object.
             related_model = self.MODEL_MAPPING[field_name]
@@ -236,21 +236,3 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
             self._process_record(record)
             processed += 1
         return processed
-
-
-class ManualVisionSynchronizer(MultiModelDataSynchronizer):
-    LOADER_CLASS = ManualDataLoader
-    LOADER_EXTRA_KWARGS = ['object_number', ]
-
-    def __init__(self, business_area_code=None, object_number=None):
-        self.object_number = object_number
-
-        if not object_number:
-            super().__init__(business_area_code=business_area_code)
-        else:
-            if self.ENDPOINT is None:
-                raise VisionException('You must set the ENDPOINT name')
-
-            self.business_area_code = business_area_code
-
-            logger.info('Business area code is {}'.format(business_area_code))

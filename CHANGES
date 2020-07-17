@@ -1,9 +1,20 @@
-Release 0.3
+Release 0.5
+----------------
+* added support for django 3.0
+* handled insight API update: detail endpoint, extra arguments
+
+
+Release 0.4
 ----------------
 * added support for python 3.8
 * dropped support for python 3.6
 * added requests timeout
 * re-enabled cert verification on api calls to insight
+
+
+Release 0.3
+----------------
+* broken
 
 
 Release 0.2

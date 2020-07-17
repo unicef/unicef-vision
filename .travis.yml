@@ -8,6 +8,7 @@ python:
 
 env:
   - DJANGO=2.2
+  - DJANGO=3.0
 
 
 install:

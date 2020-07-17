@@ -6,16 +6,15 @@ from django.conf import settings
 from django.test import override_settings, TestCase
 
 from unicef_vision.exceptions import VisionException
-from unicef_vision.loaders import FileDataLoader, ManualDataLoader, VISION_NO_DATA_MESSAGE, VisionDataLoader
+from unicef_vision.loaders import FileDataLoader, INSIGHT_NO_DATA_MESSAGE, VisionDataLoader
+from unicef_vision.utils import base_headers
 
-FAUX_VISION_URL = 'https://api.example.com/foo.svc/'
-FAUX_VISION_USER = 'jane_user'
-FAUX_VISION_PASSWORD = 'password123'
+FAUX_INSIGHT_URL = 'https://api.example.com/foo.svc/'
 
 
 class TestVisionDataLoader(TestCase):
     """Exercise VisionDataLoader class"""
-    # Note - I don't understand why, but @override_settings(VISION_URL=FAUX_VISION_URL) doesn't work when I apply
+    # Note - I don't understand why, but @override_settings(INSIGHT_URL=FAUX_INSIGHT_URL) doesn't work when I apply
     # it at the TestCase class level instead of each individual test case.
 
     def _assertGetFundamentals(self, url, mock_requests, mock_get_response):
@@ -23,9 +22,10 @@ class TestVisionDataLoader(TestCase):
         # Ensure requests.get() was called as expected
         self.assertEqual(mock_requests.get.call_count, 1)
         self.assertEqual(mock_requests.get.call_args[0], (url, ))
-        self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json'},
-                                                          'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
-                                                          'timeout': 400})
+        self.assertEqual(mock_requests.get.call_args[1], {
+            'headers': base_headers,
+            'timeout': 400
+        })
         # Ensure response.json() was called as expected
         self.assertEqual(mock_get_response.json.call_count, 1)
         self.assertEqual(mock_get_response.json.call_args[0], tuple())
@@ -39,18 +39,15 @@ class TestVisionDataLoader(TestCase):
     def test_instantiation_with_business_area_code(self):
         """Ensure I can create a loader that specifies a business_area_code"""
         test_business_area_code = 'ABC'
-
-        loader = VisionDataLoader('GetSomeStuff_JSON', business_area_code=test_business_area_code)
-        self.assertEqual(loader.url, '{}/GetSomeStuff_JSON/ABC'.format(loader.URL))
+        loader = VisionDataLoader('GetSomeStuff_JSON', businessarea=test_business_area_code)
+        self.assertEqual(loader.url, '{}/GetSomeStuff_JSON/?businessarea=ABC'.format(loader.URL))
 
     def test_instantiation_url_construction(self):
         """Ensure loader URL is constructed correctly regardless of whether or not base URL ends with a slash"""
         loader = VisionDataLoader('GetSomeStuff_JSON')
         self.assertEqual(loader.url, '{}/GetSomeStuff_JSON'.format(loader.URL))
 
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
+    @override_settings(INSIGHT_URL=FAUX_INSIGHT_URL)
     @mock.patch('unicef_vision.loaders.requests', spec=['get'])
     def test_get_success_with_response(self, mock_requests):
         """Test loader.get() when the response is 200 OK and data is returned"""
@@ -66,9 +63,7 @@ class TestVisionDataLoader(TestCase):
 
         self.assertEqual(response, [42])
 
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
+    @override_settings(INSIGHT_URL=FAUX_INSIGHT_URL)
     @mock.patch('unicef_vision.loaders.requests', spec=['get'])
     def test_get_success_with_response_and_headers(self, mock_requests):
         """Test loader.get() when the response is 200 OK and data is returned"""
@@ -83,21 +78,19 @@ class TestVisionDataLoader(TestCase):
 
         self.assertEqual(mock_requests.get.call_count, 1)
         self.assertEqual(mock_requests.get.call_args[0], (loader.url, ))
-        self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json',
-                                                                      'Test': 'Header'},
-                                                          'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
+        headers = base_headers.copy()
+        headers['Test'] = 'Header'
+        self.assertEqual(mock_requests.get.call_args[1], {'headers': headers,
                                                           'timeout': 400})
         self.assertEqual(response, [42])
 
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
+    @override_settings(INSIGHT_URL=FAUX_INSIGHT_URL)
     @mock.patch('unicef_vision.loaders.requests', spec=['get'])
     def test_get_success_no_response(self, mock_requests):
         """Test loader.get() when the response is 200 OK but no data is returned"""
         mock_get_response = mock.Mock(spec=['status_code', 'json'])
         mock_get_response.status_code = 200
-        mock_get_response.json = mock.Mock(return_value=VISION_NO_DATA_MESSAGE)
+        mock_get_response.json = mock.Mock(return_value=INSIGHT_NO_DATA_MESSAGE)
         mock_requests.get = mock.Mock(return_value=mock_get_response)
 
         loader = VisionDataLoader('GetSomeStuff_JSON')
@@ -107,9 +100,7 @@ class TestVisionDataLoader(TestCase):
 
         self.assertEqual(response, [])
 
-    @override_settings(VISION_URL=FAUX_VISION_URL)
-    @override_settings(VISION_USER=FAUX_VISION_USER)
-    @override_settings(VISION_PASSWORD=FAUX_VISION_PASSWORD)
+    @override_settings(INSIGHT_URL=FAUX_INSIGHT_URL)
     @mock.patch('unicef_vision.loaders.requests', spec=['get'])
     def test_get_failure(self, mock_requests):
         """Test loader.get() when the response is something other than 200"""
@@ -130,16 +121,14 @@ class TestVisionDataLoader(TestCase):
         # Ensure get was called as normal.
         self.assertEqual(mock_requests.get.call_count, 1)
         self.assertEqual(mock_requests.get.call_args[0], (loader.url, ))
-        self.assertEqual(mock_requests.get.call_args[1], {'headers': {'Content-Type': 'application/json'},
-                                                          'auth': (FAUX_VISION_USER, FAUX_VISION_PASSWORD),
-                                                          'timeout': 400})
+        self.assertEqual(mock_requests.get.call_args[1], {
+            'headers': base_headers,
+            'timeout': 400
+        })
 
-
-class TestManualDataLoader(TestCase):
-
-    def test_init(self):
-        a = ManualDataLoader("api", object_number="123")
-        self.assertEqual(a.url, "{}/api/123".format(settings.VISION_URL))
+    def test_detail(self):
+        a = VisionDataLoader("api", "123")
+        self.assertEqual(a.url, "{}/api/123".format(settings.INSIGHT_URL))
 
 
 class TestFileDataLoader(TestCase):

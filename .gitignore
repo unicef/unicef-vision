@@ -13,3 +13,5 @@ coverage.xml
 tests/demoproject/db.sqlite3
 Pipfile
 Pipfile.lock
+.venv/
+.envrc
