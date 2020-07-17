@@ -1,5 +1,6 @@
 import json
 import logging
+from urllib.parse import urlencode
 
 import requests
 from django.conf import settings
@@ -16,18 +17,21 @@ INSIGHT_NO_DATA_MESSAGE = 'No Data Available'
 class VisionDataLoader:
     """Base class for Data Loading"""
 
-    def __init__(self, endpoint, business_area_code=None, **kwargs):
+    def __init__(self, endpoint, detail=None, **kwargs):
 
         self.URL = kwargs.get('url', settings.INSIGHT_URL)
         self.set_headers(kwargs.get('headers', ()))
-        self.set_url(endpoint, business_area_code)
+        querystring = urlencode(kwargs)
+        self.set_url(endpoint, detail, querystring)
 
-    def set_url(self, endpoint, detail):
+    def set_url(self, endpoint, detail, querystring):
         separator = '' if self.URL.endswith('/') else '/'
 
         self.url = '{}{}{}'.format(self.URL, separator, endpoint)
         if detail:
             self.url += '/{}'.format(detail)
+        if querystring:
+            self.url += '/?{}'.format(querystring)
         logger.info('About to get data from {}'.format(self.url))
 
     def set_headers(self, headers):
@@ -52,26 +56,12 @@ class VisionDataLoader:
         return json_response
 
 
-class ManualDataLoader(VisionDataLoader):
-    """
-    Can be used to sync single objects from INSIGHT url templates:
-    /endpoint if no business_area_code or object_number
-    /endpoint/business_area_code if no object number provided
-    /endpoint/object_number else
-    """
-
-    def __init__(self, endpoint, business_area_code=None, object_number=None, **kwargs):
-        super().__init__(endpoint, business_area_code, **kwargs)
-
-        if object_number:
-            self.set_url(endpoint, object_number)
-
-
 class FileDataLoader:
     """Loader to read json file instead of REST API"""
 
-    def __init__(self, filename, *args, **kwargs):
+    def __init__(self, filename, detail=None, **kwargs):
         self.filename = filename
+        self.detail = detail
 
     def get(self):
         data = json.load(open(self.filename))

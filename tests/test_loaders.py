@@ -6,7 +6,7 @@ from django.conf import settings
 from django.test import override_settings, TestCase
 
 from unicef_vision.exceptions import VisionException
-from unicef_vision.loaders import FileDataLoader, INSIGHT_NO_DATA_MESSAGE, ManualDataLoader, VisionDataLoader
+from unicef_vision.loaders import FileDataLoader, INSIGHT_NO_DATA_MESSAGE, VisionDataLoader
 from unicef_vision.utils import base_headers
 
 FAUX_INSIGHT_URL = 'https://api.example.com/foo.svc/'
@@ -39,9 +39,8 @@ class TestVisionDataLoader(TestCase):
     def test_instantiation_with_business_area_code(self):
         """Ensure I can create a loader that specifies a business_area_code"""
         test_business_area_code = 'ABC'
-
-        loader = VisionDataLoader('GetSomeStuff_JSON', business_area_code=test_business_area_code)
-        self.assertEqual(loader.url, '{}/GetSomeStuff_JSON/ABC'.format(loader.URL))
+        loader = VisionDataLoader('GetSomeStuff_JSON', businessarea=test_business_area_code)
+        self.assertEqual(loader.url, '{}/GetSomeStuff_JSON/?businessarea=ABC'.format(loader.URL))
 
     def test_instantiation_url_construction(self):
         """Ensure loader URL is constructed correctly regardless of whether or not base URL ends with a slash"""
@@ -127,11 +126,8 @@ class TestVisionDataLoader(TestCase):
             'timeout': 400
         })
 
-
-class TestManualDataLoader(TestCase):
-
-    def test_init(self):
-        a = ManualDataLoader("api", object_number="123")
+    def test_detail(self):
+        a = VisionDataLoader("api", "123")
         self.assertEqual(a.url, "{}/api/123".format(settings.INSIGHT_URL))
 
 
