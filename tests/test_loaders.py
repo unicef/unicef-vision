@@ -1,9 +1,10 @@
 import json
 import os
 
-import mock
 from django.conf import settings
 from django.test import override_settings, TestCase
+
+import mock
 
 from unicef_vision.exceptions import VisionException
 from unicef_vision.loaders import FileDataLoader, INSIGHT_NO_DATA_MESSAGE, VisionDataLoader

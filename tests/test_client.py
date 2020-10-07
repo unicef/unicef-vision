@@ -1,7 +1,8 @@
 import sys
 
-import responses
 from django.test import SimpleTestCase
+
+import responses
 
 from unicef_vision import client
 from unicef_vision.client import main

@@ -10,6 +10,7 @@ from django.utils.encoding import force_str
 
 from unicef_vision.exceptions import VisionException
 from unicef_vision.loaders import FileDataLoader, VisionDataLoader
+from unicef_vision.settings import INSIGHT_DATE_FORMAT
 from unicef_vision.utils import get_vision_logger_domain_model
 
 logger = logging.getLogger(__name__)
@@ -114,6 +115,13 @@ class VisionDataSynchronizer(DataSynchronizer):
             raise VisionException('You must set the ENDPOINT name')
         super().__init__(detail, business_area_code, *args, **kwargs)
 
+    def _convert_records(self, records):
+        if isinstance(records, list):
+            return records
+        elif records and "ROWSET" in records:
+            return records["ROWSET"]["ROW"]
+        return []
+
     def set_kwargs(self, **kwargs):
         kwargs = super().set_kwargs(**kwargs)
         kwargs['endpoint'] = self.ENDPOINT
@@ -149,18 +157,10 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
     DEFAULTS = {}
     FIELD_HANDLERS = {}
 
-    def _convert_records(self, records):
-        if isinstance(records, list):
-            return records
-        try:
-            return records["ROWSET"]["ROW"]
-        except (TypeError, ValueError):
-            return []
-
     def _get_field_value(self, field_name, field_json_code, json_item, model):
         if field_json_code in self.DATE_FIELDS:
             # parsing field as date
-            return datetime.datetime.strptime(json_item[field_json_code], '%d-%b-%y').date()
+            return datetime.datetime.strptime(json_item[field_json_code], INSIGHT_DATE_FORMAT).date()
         elif field_name in self.MODEL_MAPPING.keys():
             # this is related model, so we need to fetch somehow related object.
             related_model = self.MODEL_MAPPING[field_name]

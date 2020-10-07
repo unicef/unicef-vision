@@ -1,5 +1,6 @@
-import mock
 from django.test import override_settings, SimpleTestCase
+
+import mock
 
 from unicef_vision import utils
 from unicef_vision.loaders import INSIGHT_NO_DATA_MESSAGE

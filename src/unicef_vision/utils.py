@@ -1,6 +1,7 @@
-import requests
 from django.apps import apps
 from django.conf import settings
+
+import requests
 
 from unicef_vision.settings import TIMEOUT
 
