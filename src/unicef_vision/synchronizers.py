@@ -115,6 +115,11 @@ class VisionDataSynchronizer(DataSynchronizer):
             raise VisionException('You must set the ENDPOINT name')
         super().__init__(detail, business_area_code, *args, **kwargs)
 
+    def _convert_records(self, records):
+        if isinstance(records, list):
+            return records
+        return [] if not records else records["ROWSET"]["ROW"]
+
     def set_kwargs(self, **kwargs):
         kwargs = super().set_kwargs(**kwargs)
         kwargs['endpoint'] = self.ENDPOINT
@@ -150,10 +155,6 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
     DEFAULTS = {}
     FIELD_HANDLERS = {}
 
-    def _convert_records(self, records):
-        if isinstance(records, list):
-            return records
-        return [] if not records else records["ROWSET"]["ROW"]
 
     def _get_field_value(self, field_name, field_json_code, json_item, model):
         if field_json_code in self.DATE_FIELDS:
