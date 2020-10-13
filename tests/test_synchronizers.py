@@ -332,9 +332,9 @@ class TestMultiModelDataSynchronizer(TestCase):
 
     def test_convert_records(self):
         list_records = [1, 2, 3]
-        self.assertEqual(list_records, VisionDataSynchronizer._convert_records(list_records))
+        self.assertEqual(list_records, VisionDataSynchronizer._convert_records(self, list_records))
         list_records_str = {"ROWSET": {"ROW": [1, 2, 3]}}
-        self.assertEqual(list_records, VisionDataSynchronizer._convert_records(list_records_str))
+        self.assertEqual(list_records, VisionDataSynchronizer._convert_records(self, list_records_str))
         self.assertListEqual([], VisionDataSynchronizer._convert_records('abcde'))
 
     def _setup_sync(self):
