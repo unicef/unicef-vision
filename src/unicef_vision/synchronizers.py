@@ -10,8 +10,8 @@ from django.utils.encoding import force_str
 
 from unicef_vision.exceptions import VisionException
 from unicef_vision.loaders import FileDataLoader, VisionDataLoader
-from unicef_vision.utils import get_vision_logger_domain_model
 from unicef_vision.settings import INSIGHT_DATE_FORMAT
+from unicef_vision.utils import get_vision_logger_domain_model
 
 logger = logging.getLogger(__name__)
 
