@@ -155,7 +155,6 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
     DEFAULTS = {}
     FIELD_HANDLERS = {}
 
-
     def _get_field_value(self, field_name, field_json_code, json_item, model):
         if field_json_code in self.DATE_FIELDS:
             # parsing field as date
