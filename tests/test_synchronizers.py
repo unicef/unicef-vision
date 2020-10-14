@@ -1,9 +1,10 @@
 from collections import OrderedDict
 
-import mock
 from django.db.models import NOT_PROVIDED
 from django.test import TestCase
 from django.utils.timezone import now as django_now
+
+import mock
 
 from unicef_vision.exceptions import VisionException
 from unicef_vision.synchronizers import FileDataSynchronizer, MultiModelDataSynchronizer, VisionDataSynchronizer

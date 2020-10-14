@@ -2,8 +2,9 @@ import json
 import logging
 from urllib.parse import urlencode
 
-import requests
 from django.conf import settings
+
+import requests
 
 from unicef_vision.exceptions import VisionException
 from unicef_vision.settings import TIMEOUT

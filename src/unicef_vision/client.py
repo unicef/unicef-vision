@@ -4,8 +4,9 @@ import logging
 import os
 from urllib.parse import urljoin
 
-import requests
 from django.conf import settings
+
+import requests
 from requests.auth import HTTPDigestAuth
 
 from unicef_vision.settings import TIMEOUT
