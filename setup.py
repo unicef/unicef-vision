@@ -32,7 +32,7 @@ setup(
     author='UNICEF',
     author_email='rapidpro@unicef.org',
     description='',
-    # long_description=read('README.rst'),
+    long_description=read('README.rst'),
     platforms=['any'],
     license='Apache 2 License',
     classifiers=[
@@ -43,6 +43,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Framework :: Django',
         'Framework :: Django :: 2.2',
         'Framework :: Django :: 3.0',
