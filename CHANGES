@@ -1,6 +1,7 @@
 Release 0.7 (in development)
 ----------------
 * added support to python 3.9
+* amended _convert_records to handle single and multiple rows
 
 
 Release 0.6
