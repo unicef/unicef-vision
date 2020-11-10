@@ -119,7 +119,11 @@ class VisionDataSynchronizer(DataSynchronizer):
         if isinstance(records, list):
             return records
         elif records and "ROWSET" in records:
-            return records["ROWSET"]["ROW"]
+            records = records["ROWSET"]["ROW"]
+            if isinstance(records, list):
+                return records
+            else:
+                return [records, ]
         return []
 
     def set_kwargs(self, **kwargs):
