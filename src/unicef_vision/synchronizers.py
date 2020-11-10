@@ -118,7 +118,9 @@ class VisionDataSynchronizer(DataSynchronizer):
     def _convert_records(self, records):
         if isinstance(records, list):
             return records
-        return [] if not records else records["ROWSET"]["ROW"]
+        elif records and "ROWSET" in records:
+            return records["ROWSET"]["ROW"]
+        return []
 
     def set_kwargs(self, **kwargs):
         kwargs = super().set_kwargs(**kwargs)
