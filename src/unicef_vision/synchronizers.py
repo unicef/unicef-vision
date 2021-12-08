@@ -109,7 +109,8 @@ class VisionDataSynchronizer(DataSynchronizer):
     LOADER_CLASS = VisionDataLoader
 
     def __init__(self, detail=None, business_area_code=None, *args, **kwargs) -> None:
-        if not (business_area_code or self.GLOBAL_CALL):
+
+        if business_area_code is None and not self.GLOBAL_CALL:
             raise VisionException('business_area_code is required')
         if self.ENDPOINT is None:
             raise VisionException('You must set the ENDPOINT name')
