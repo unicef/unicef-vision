@@ -17,7 +17,6 @@ jobs:
           POSTGRES_PASSWORD: postgres
     steps:
       - checkout
-      - run: sudo apt-get install libgdal-dev libgeos-dev libproj-dev libudunits2-dev libv8-dev
       - restore_cache:
           key: deps1-{{ .Branch }}-{{ checksum "setup.py" }}
       - run:
