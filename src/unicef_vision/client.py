@@ -23,7 +23,7 @@ class VisionAPIClient:
             self.auth = HTTPDigestAuth(username, password)
 
     def build_path(self, path=None):
-        """ Builds the full path to the service.
+        """Builds the full path to the service.
         Args:
             path (string): The part of the path you want to append to the base url.
         Returns:
@@ -34,55 +34,49 @@ class VisionAPIClient:
         if path is None:
             return self.base_url
         return urljoin(
-            self.base_url, os.path.normpath(path),
+            self.base_url,
+            os.path.normpath(path),
         )
 
     def make_request(self, path):
-
-        response = requests.get(
-            self.build_path(path),
-            auth=getattr(self, 'auth', ()),
-            timeout=TIMEOUT
-        )
+        response = requests.get(self.build_path(path), auth=getattr(self, "auth", ()), timeout=TIMEOUT)
         return response
 
     def call_command(self, command_type, **properties):
-
-        payload = json.dumps(
-            {
-                'type': command_type,
-                'command': {
-                    'properties': properties
-                }
-            }
-        )
+        payload = json.dumps({"type": command_type, "command": {"properties": properties}})
 
         response = requests.post(
-            self.build_path('command'),
-            headers={'cache-control': 'application/json'},
-            auth=getattr(self, 'auth', ()),
+            self.build_path("command"),
+            headers={"cache-control": "application/json"},
+            auth=getattr(self, "auth", ()),
             data=payload,
-            timeout=TIMEOUT
+            timeout=TIMEOUT,
         )
         return response
 
 
 def main():
     """Main method for command line usage"""
-    parser = argparse.ArgumentParser(description='INSIGHT API Python Client')
+    parser = argparse.ArgumentParser(description="INSIGHT API Python Client")
 
-    parser.add_argument('-U', '--username',
-                        type=str,
-                        default='',
-                        help='Optional username for authentication')
-    parser.add_argument('-P', '--password',
-                        type=str,
-                        default='',
-                        help='Optional password for authentication')
+    parser.add_argument(
+        "-U",
+        "--username",
+        type=str,
+        default="",
+        help="Optional username for authentication",
+    )
+    parser.add_argument(
+        "-P",
+        "--password",
+        type=str,
+        default="",
+        help="Optional password for authentication",
+    )
 
     args = parser.parse_args()
     VisionAPIClient(username=args.username, password=args.password)
 
 
-if __name__ == '__main__':  # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     main()

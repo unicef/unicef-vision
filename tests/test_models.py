@@ -8,4 +8,4 @@ class TestStrUnicode(SimpleTestCase):
 
     def test_vision_sync_log(self):
         instance = VisionLog()
-        self.assertTrue(str(instance).startswith(u''))
+        self.assertTrue(str(instance).startswith(""))

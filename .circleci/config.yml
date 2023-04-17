@@ -8,8 +8,8 @@ parameters:
 jobs:
   build:
     docker:
-      - image: circleci/python:3.9
-      - image: circleci/postgres:12-alpine-postgis
+      - image: cimg/python:3.11
+      - image: cimg/postgres:14.7
         environment:
           POSTGRES_USER: postgres
           PGUSER: postgres
@@ -38,7 +38,7 @@ jobs:
           destination: python_app
   release:
     docker:
-      - image: circleci/python:3.9
+      - image: cimg/python:3.11
     steps:
       - checkout
       - run: sudo apt-get install libgdal-dev libgeos-dev libproj-dev libudunits2-dev libv8-dev

@@ -12,28 +12,27 @@ from unicef_vision.utils import base_headers
 
 logger = logging.getLogger(__name__)
 
-INSIGHT_NO_DATA_MESSAGE = 'No Data Available'
+INSIGHT_NO_DATA_MESSAGE = "No Data Available"
 
 
 class VisionDataLoader:
     """Base class for Data Loading"""
 
     def __init__(self, endpoint, detail=None, **kwargs):
-
-        self.URL = kwargs.get('url', settings.INSIGHT_URL)
-        self.set_headers(kwargs.get('headers', ()))
+        self.URL = kwargs.get("url", settings.INSIGHT_URL)
+        self.set_headers(kwargs.get("headers", ()))
         querystring = urlencode(kwargs)
         self.set_url(endpoint, detail, querystring)
 
     def set_url(self, endpoint, detail, querystring):
-        separator = '' if self.URL.endswith('/') else '/'
+        separator = "" if self.URL.endswith("/") else "/"
 
-        self.url = '{}{}{}'.format(self.URL, separator, endpoint)
+        self.url = "{}{}{}".format(self.URL, separator, endpoint)
         if detail:
-            self.url += '/{}'.format(detail)
+            self.url += "/{}".format(detail)
         if querystring:
-            self.url += '/?{}'.format(querystring)
-        logger.info('About to get data from {}'.format(self.url))
+            self.url += "/?{}".format(querystring)
+        logger.info("About to get data from {}".format(self.url))
 
     def set_headers(self, headers):
         self.headers = base_headers
@@ -42,14 +41,10 @@ class VisionDataLoader:
                 self.headers[header_name] = header_value
 
     def get(self):
-        response = requests.get(
-            self.url,
-            headers=self.headers,
-            timeout=TIMEOUT
-        )
+        response = requests.get(self.url, headers=self.headers, timeout=TIMEOUT)
 
         if response.status_code != 200:
-            raise VisionException('Load data failed! Http code: {}'.format(response.status_code))
+            raise VisionException("Load data failed! Http code: {}".format(response.status_code))
         json_response = response.json()
         if json_response == INSIGHT_NO_DATA_MESSAGE:
             return []

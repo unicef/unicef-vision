@@ -21,7 +21,6 @@ class Empty:
 
 
 class DataSynchronizer:
-
     __metaclass__ = ABCMeta
 
     REQUIRED_KEYS = {}
@@ -32,11 +31,11 @@ class DataSynchronizer:
     business_area_code = None
 
     @abstractmethod
-    def _convert_records(self, records):    # pragma: no cover
+    def _convert_records(self, records):  # pragma: no cover
         pass
 
     @abstractmethod
-    def _save_records(self, records):   # pragma: no cover
+    def _save_records(self, records):  # pragma: no cover
         pass
 
     def set_kwargs(self, **kwargs):
@@ -45,7 +44,7 @@ class DataSynchronizer:
     def __init__(self, detail=None, business_area_code=None, *args, **kwargs) -> None:
         self.detail = detail
         self.business_area_code = business_area_code
-        logger.info('Synchronizer is {} - {} {}'.format(self.__class__.__name__, self.detail, self.business_area_code))
+        logger.info("Synchronizer is {} - {} {}".format(self.__class__.__name__, self.detail, self.business_area_code))
         self.kwargs = self.set_kwargs(**kwargs)
 
     def _filter_records(self, records):
@@ -63,8 +62,8 @@ class DataSynchronizer:
 
     def logger_parameters(self):
         return {
-            'handler_name': self.__class__.__name__,
-            'business_area_code': self.business_area_code
+            "handler_name": self.__class__.__name__,
+            "business_area_code": self.business_area_code,
         }
 
     def sync(self):
@@ -78,23 +77,23 @@ class DataSynchronizer:
 
         try:
             original_records = data_getter.get()
-            logger.info('{} records returned from get'.format(len(original_records)))
+            logger.info("{} records returned from get".format(len(original_records)))
 
             converted_records = self._convert_records(original_records)
             self.log.total_records = len(converted_records)
-            logger.info('{} records returned from conversion'.format(len(converted_records)))
+            logger.info("{} records returned from conversion".format(len(converted_records)))
 
             totals = self._save_records(converted_records)
         except Exception as e:
-            logger.info('sync', exc_info=True)
+            logger.info("sync", exc_info=True)
             self.log.exception_message = force_str(e)
             traceback = sys.exc_info()[2]
             raise VisionException(force_str(e)).with_traceback(traceback)
         else:
             if isinstance(totals, dict):
-                self.log.total_processed = totals.get('processed', 0)
-                self.log.details = totals.get('details', '')
-                self.log.total_records = totals.get('total_records', self.log.total_records)
+                self.log.total_processed = totals.get("processed", 0)
+                self.log.details = totals.get("details", "")
+                self.log.total_records = totals.get("total_records", self.log.total_records)
             else:
                 self.log.total_processed = totals
             self.log.successful = True
@@ -109,11 +108,10 @@ class VisionDataSynchronizer(DataSynchronizer):
     LOADER_CLASS = VisionDataLoader
 
     def __init__(self, detail=None, business_area_code=None, *args, **kwargs) -> None:
-
         if business_area_code is None and not self.GLOBAL_CALL:
-            raise VisionException('business_area_code is required')
+            raise VisionException("business_area_code is required")
         if self.ENDPOINT is None:
-            raise VisionException('You must set the ENDPOINT name')
+            raise VisionException("You must set the ENDPOINT name")
         super().__init__(detail, business_area_code, *args, **kwargs)
 
     def _convert_records(self, records):
@@ -124,16 +122,18 @@ class VisionDataSynchronizer(DataSynchronizer):
             if isinstance(records, list):
                 return records
             else:
-                return [records, ]
+                return [
+                    records,
+                ]
         return []
 
     def set_kwargs(self, **kwargs):
         kwargs = super().set_kwargs(**kwargs)
-        kwargs['endpoint'] = self.ENDPOINT
+        kwargs["endpoint"] = self.ENDPOINT
         if self.detail:
-            kwargs['detail'] = self.detail
+            kwargs["detail"] = self.detail
         if self.business_area_code:
-            kwargs['businessarea'] = self.business_area_code
+            kwargs["businessarea"] = self.business_area_code
         return kwargs
 
 
@@ -143,15 +143,15 @@ class FileDataSynchronizer(DataSynchronizer):
     LOADER_CLASS = FileDataLoader
 
     def __init__(self, business_area_code=None, *args, **kwargs):
-        filename = kwargs.get('filename', None)
+        filename = kwargs.get("filename", None)
         if not filename:
-            raise VisionException('You need provide the path to the file')
+            raise VisionException("You need provide the path to the file")
         self.filename = filename
         super().__init__(business_area_code, *args, **kwargs)
 
     def set_kwargs(self, **kwargs):
         kwargs = super().set_kwargs(**kwargs)
-        kwargs['filename'] = self.filename
+        kwargs["filename"] = self.filename
         return kwargs
 
 
@@ -176,13 +176,15 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
             else:
                 # model class provided, related object can be fetched with query by field
                 # analogue of field_json_code
-                reversed_dict = dict(zip(
-                    self.MAPPING[field_name].values(),
-                    self.MAPPING[field_name].keys()
-                ))
-                result = related_model.objects.get(**{
-                    reversed_dict[field_json_code]: json_item.get(field_json_code, None)
-                })
+                reversed_dict = dict(
+                    zip(
+                        self.MAPPING[field_name].values(),
+                        self.MAPPING[field_name].keys(),
+                    )
+                )
+                result = related_model.objects.get(
+                    **{reversed_dict[field_json_code]: json_item.get(field_json_code, None)}
+                )
         else:
             # field can be used as it is without custom mappings. if field has default, it should be used
             result = json_item.get(field_json_code, Empty)
@@ -193,9 +195,9 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
                     result = field_default
 
         # additional logic on field may be applied
-        value_handler = self.FIELD_HANDLERS.get(
-            {y: x for x, y in self.MODEL_MAPPING.items()}.get(model), {}
-        ).get(field_name, None)
+        value_handler = self.FIELD_HANDLERS.get({y: x for x, y in self.MODEL_MAPPING.items()}.get(model), {}).get(
+            field_name, None
+        )
         if value_handler:
             result = value_handler(result)
         return result
@@ -204,12 +206,20 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
         try:
             for model_name, model in self.MODEL_MAPPING.items():
                 mapped_item = dict(
-                    [(field_name, self._get_field_value(field_name, field_json_code, json_item, model))
-                     for field_name, field_json_code in self.MAPPING[model_name].items()]
+                    [
+                        (
+                            field_name,
+                            self._get_field_value(field_name, field_json_code, json_item, model),
+                        )
+                        for field_name, field_json_code in self.MAPPING[model_name].items()
+                    ]
                 )
                 kwargs = dict(
-                    [(field_name, value) for field_name, value in mapped_item.items()
-                     if model._meta.get_field(field_name).unique]
+                    [
+                        (field_name, value)
+                        for field_name, value in mapped_item.items()
+                        if model._meta.get_field(field_name).unique
+                    ]
                 )
 
                 if not kwargs:
@@ -218,20 +228,19 @@ class MultiModelDataSynchronizer(VisionDataSynchronizer):
                             unique_fields = fields
                             break
 
-                    kwargs = {
-                        field: mapped_item[field] for field in unique_fields
-                    }
+                    kwargs = {field: mapped_item[field] for field in unique_fields}
 
                 defaults = dict(
-                    [(field_name, value) for field_name, value in mapped_item.items()
-                     if field_name not in kwargs.keys()]
+                    [
+                        (field_name, value)
+                        for field_name, value in mapped_item.items()
+                        if field_name not in kwargs.keys()
+                    ]
                 )
                 defaults.update(self.DEFAULTS.get(model, {}))
-                model.objects.update_or_create(
-                    defaults=defaults, **kwargs
-                )
+                model.objects.update_or_create(defaults=defaults, **kwargs)
         except Exception:
-            logger.warning('Exception processing record', exc_info=True)
+            logger.warning("Exception processing record", exc_info=True)
 
     def _save_records(self, records):
         processed = 0

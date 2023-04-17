@@ -1,5 +1,9 @@
 [flake8]
 max-line-length = 120
 
+ignore =
+    W503,
+    # line break before binary operator
+
 exclude =
     */migrations

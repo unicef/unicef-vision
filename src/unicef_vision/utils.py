@@ -5,7 +5,10 @@ import requests
 
 from unicef_vision.settings import TIMEOUT
 
-base_headers = {'Content-Type': 'application/json', 'Ocp-Apim-Subscription-Key': settings.INSIGHT_SUB_KEY}
+base_headers = {
+    "Content-Type": "application/json",
+    "Ocp-Apim-Subscription-Key": settings.INSIGHT_SUB_KEY,
+}
 
 
 def get_vision_logger_domain_model():
@@ -14,29 +17,23 @@ def get_vision_logger_domain_model():
 
 
 def get_data_from_insight(endpoint, data=None):
-    separator = '' if settings.INSIGHT_URL.endswith('/') else '/'
+    separator = "" if settings.INSIGHT_URL.endswith("/") else "/"
 
     if not data:
         data = {}
 
-    url = '{}{}{}'.format(
-        settings.INSIGHT_URL,
-        separator,
-        endpoint
-    ).format(**data)
+    url = "{}{}{}".format(settings.INSIGHT_URL, separator, endpoint).format(**data)
 
-    resp = requests.get(
-        url,
-        headers=base_headers,
-        timeout=TIMEOUT
-    )
+    resp = requests.get(url, headers=base_headers, timeout=TIMEOUT)
     if resp.status_code != 200:
-        return False, 'Loading data from Vision Failed, status {}'.format(resp.status_code)
+        return False, "Loading data from Vision Failed, status {}".format(resp.status_code)
     try:
-
         result = resp.json()
     except ValueError:
-        return False, 'Loading data from Vision Failed, no valid response returned for data: {}'.format(data)
+        return (
+            False,
+            "Loading data from Vision Failed, no valid response returned for data: {}".format(data),
+        )
     return True, result
 
 
