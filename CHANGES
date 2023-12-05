@@ -1,7 +1,7 @@
 Release 0.7 (in development)
 ----------------
-* added support to python 3.9
-* added support for django 3.2, 4.0, 4.1
+* added support to python 3.11,12
+* added support for django 3.2, 4.2, 5.0
 * amended _convert_records to handle single and multiple rows
 
 
