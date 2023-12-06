@@ -7,7 +7,7 @@ name = "unicef-vision"
 dynamic = ["version"]
 description = ""
 readme = "README.rst"
-license = "Apache 2 License"
+license = "Apache-2.0 OR MIT"
 authors = [
     { name = "UNICEF", email = "rapidpro@unicef.org" },
 ]
@@ -47,7 +47,7 @@ test = [
 Homepage = "https://github.com/unicef/unicef-vision"
 
 [tool.hatch.version]
-path = "unicef_vision/__init__.py"
+path = "src/unicef_vision/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
