@@ -54,6 +54,9 @@ include = [
     "/src",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["/src/unicef_vision"]
+
 [tool.black]
 line-length = 120
 exclude = '''
